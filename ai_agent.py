@@ -56,3 +56,84 @@ Return only the modified code without any explanations or markdown formatting.""
             user_prompt = f"""Current code:
 ```{language}
 {current_content}
+```
+
+Context: {context if context else 'No additional context provided'}
+
+Instructions: {prompt}
+
+Please modify the code according to the instructions and return only the complete modified code."""
+
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=4000
+                )
+                
+                modified_code = response.choices[0].message.content.strip()
+                
+                # Clean up the response (remove markdown if present)
+                if modified_code.startswith("```"):
+                    lines = modified_code.split('\n')
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    modified_code = '\n'.join(lines)
+                
+                return modified_code
+                
+            except Exception as e:
+                raise Exception(f"Failed to get AI response: {str(e)}")
+        
+        except Exception as e:
+            raise Exception(f"Error in modify_code: {str(e)}")
+    
+    def _get_language_from_extension(self, extension: str) -> str:
+        """Get the programming language name from file extension."""
+        language_map = {
+            '.py': 'Python',
+            '.js': 'JavaScript',
+            '.ts': 'TypeScript',
+            '.jsx': 'JavaScript (React)',
+            '.tsx': 'TypeScript (React)',
+            '.java': 'Java',
+            '.cpp': 'C++',
+            '.c': 'C',
+            '.cs': 'C#',
+            '.php': 'PHP',
+            '.rb': 'Ruby',
+            '.go': 'Go',
+            '.rs': 'Rust',
+            '.swift': 'Swift',
+            '.kt': 'Kotlin',
+            '.scala': 'Scala',
+            '.html': 'HTML',
+            '.css': 'CSS',
+            '.scss': 'SCSS',
+            '.sass': 'Sass',
+            '.json': 'JSON',
+            '.xml': 'XML',
+            '.yaml': 'YAML',
+            '.yml': 'YAML',
+            '.sql': 'SQL',
+            '.sh': 'Shell Script',
+            '.bat': 'Batch Script',
+            '.ps1': 'PowerShell',
+            '.md': 'Markdown',
+            '.dockerfile': 'Dockerfile',
+            '.tf': 'Terraform',
+            '.vue': 'Vue.js',
+            '.r': 'R',
+            '.m': 'MATLAB',
+            '.pl': 'Perl',
+            '.lua': 'Lua',
+            '.dart': 'Dart',
+        }
+        
+        return language_map.get(extension.lower(), 'Text')
