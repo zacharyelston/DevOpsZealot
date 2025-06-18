@@ -23,7 +23,8 @@ class ContainerManager:
                               context: str = "",
                               file_patterns: Optional[List[str]] = None,
                               auth_username: Optional[str] = None,
-                              auth_token: Optional[str] = None) -> Dict[str, Any]:
+                              auth_token: Optional[str] = None,
+                              redmine_issue_id: Optional[int] = None) -> Dict[str, Any]:
         """Create configuration for a container job."""
         
         job_id = str(uuid.uuid4())[:8]
@@ -40,6 +41,7 @@ class ContainerManager:
                 "username": auth_username,
                 "token": auth_token
             } if auth_username and auth_token else None,
+            "redmine_issue_id": redmine_issue_id,
             "status": "configured",
             "container_id": None,
             "logs": [],

@@ -3,6 +3,7 @@ import json
 import time
 from datetime import datetime
 from container_manager import ContainerManager
+from redmine_integration import RedmineIntegration
 
 # Configure page
 st.set_page_config(
@@ -19,6 +20,12 @@ if 'active_jobs' not in st.session_state:
     st.session_state.active_jobs = {}
 if 'refresh_counter' not in st.session_state:
     st.session_state.refresh_counter = 0
+if 'redmine_connection' not in st.session_state:
+    st.session_state.redmine_connection = None
+if 'redmine_projects' not in st.session_state:
+    st.session_state.redmine_projects = []
+if 'selected_issues' not in st.session_state:
+    st.session_state.selected_issues = {}
 
 def main():
     st.title("🚀 AI Git Container Orchestrator")
@@ -29,10 +36,12 @@ def main():
         st.header("Navigation")
         page = st.selectbox(
             "Select Page",
-            ["Job Configuration", "Active Jobs", "Job History", "Container Logs"]
+            ["Redmine Setup", "Job Configuration", "Active Jobs", "Job History", "Container Logs"]
         )
     
-    if page == "Job Configuration":
+    if page == "Redmine Setup":
+        redmine_setup_page()
+    elif page == "Job Configuration":
         job_configuration_page()
     elif page == "Active Jobs":
         active_jobs_page()
@@ -40,6 +49,121 @@ def main():
         job_history_page()
     elif page == "Container Logs":
         container_logs_page()
+
+def redmine_setup_page():
+    st.header("Redmine Integration Setup")
+    
+    # Connection configuration
+    with st.form("redmine_connection_form"):
+        st.subheader("Server Configuration")
+        
+        redmine_url = st.text_input(
+            "Redmine Server URL",
+            value="https://redstone.redminecloud.net",
+            help="Your Redmine server URL"
+        )
+        
+        auth_method = st.radio(
+            "Authentication Method",
+            ["API Key", "Username/Password"]
+        )
+        
+        if auth_method == "API Key":
+            api_key = st.text_input(
+                "API Key",
+                type="password",
+                help="Your Redmine API key (found in your account settings)"
+            )
+            username = None
+            password = None
+        else:
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+            api_key = None
+        
+        if st.form_submit_button("Connect to Redmine", type="primary"):
+            if not redmine_url:
+                st.error("Please enter the Redmine server URL")
+                return
+            
+            if auth_method == "API Key" and not api_key:
+                st.error("Please enter your API key")
+                return
+            
+            if auth_method == "Username/Password" and (not username or not password):
+                st.error("Please enter both username and password")
+                return
+            
+            try:
+                with st.spinner("Connecting to Redmine..."):
+                    redmine = RedmineIntegration(
+                        url=redmine_url,
+                        api_key=api_key,
+                        username=username,
+                        password=password
+                    )
+                    
+                    # Test connection
+                    connection_test = redmine.test_connection()
+                    
+                    if connection_test["success"]:
+                        st.session_state.redmine_connection = redmine
+                        user_info = connection_test["user"]
+                        
+                        st.success(f"Connected successfully as {user_info['firstname']} {user_info['lastname']} ({user_info['login']})")
+                        
+                        # Load projects
+                        with st.spinner("Loading projects..."):
+                            projects = redmine.get_projects()
+                            st.session_state.redmine_projects = projects
+                            st.success(f"Loaded {len(projects)} projects")
+                    else:
+                        st.error(f"Connection failed: {connection_test['error']}")
+                        
+            except Exception as e:
+                st.error(f"Failed to connect to Redmine: {str(e)}")
+    
+    # Show connection status
+    if st.session_state.redmine_connection:
+        st.success("✅ Connected to Redmine")
+        
+        # Project browser
+        st.subheader("Available Projects")
+        
+        if st.session_state.redmine_projects:
+            for project in st.session_state.redmine_projects:
+                with st.expander(f"📁 {project['name']} ({project['identifier']})"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.text(f"ID: {project['id']}")
+                        st.text(f"Status: {project['status']}")
+                        st.text(f"Created: {project['created_on'][:10]}")
+                    
+                    with col2:
+                        st.text(f"Updated: {project['updated_on'][:10]}")
+                        if project['description']:
+                            st.text("Description:")
+                            st.caption(project['description'][:200] + "..." if len(project['description']) > 200 else project['description'])
+                    
+                    # Load issues for this project
+                    if st.button(f"View Issues", key=f"issues_{project['id']}"):
+                        try:
+                            with st.spinner("Loading issues..."):
+                                issues = st.session_state.redmine_connection.get_project_issues(project['identifier'])
+                                st.session_state.selected_issues[project['id']] = issues
+                                
+                            st.subheader(f"Issues in {project['name']}")
+                            for issue in issues[:10]:  # Show first 10 issues
+                                st.text(f"#{issue['id']} - {issue['subject']} ({issue['status']['name']})")
+                                
+                            if len(issues) > 10:
+                                st.info(f"Showing 10 of {len(issues)} issues. Use Job Configuration to select specific issues.")
+                                
+                        except Exception as e:
+                            st.error(f"Failed to load issues: {str(e)}")
+    else:
+        st.info("Please connect to Redmine to view projects and issues")
 
 def job_configuration_page():
     st.header("Configure New Container Job")
@@ -80,9 +204,72 @@ def job_configuration_page():
                 help="Personal access token or password"
             )
         
+        st.subheader("Redmine Issue (Optional)")
+        selected_issue = None
+        
+        if st.session_state.redmine_connection:
+            # Project selection
+            if st.session_state.redmine_projects:
+                project_options = {f"{p['name']} ({p['identifier']})": p for p in st.session_state.redmine_projects}
+                selected_project_name = st.selectbox(
+                    "Select Project",
+                    ["None"] + list(project_options.keys()),
+                    help="Choose a Redmine project to link this job to"
+                )
+                
+                if selected_project_name != "None":
+                    selected_project = project_options[selected_project_name]
+                    
+                    # Load issues for selected project
+                    try:
+                        with st.spinner("Loading issues..."):
+                            issues = st.session_state.redmine_connection.get_project_issues(selected_project['identifier'])
+                        
+                        if issues:
+                            issue_options = {f"#{i['id']} - {i['subject'][:60]}{'...' if len(i['subject']) > 60 else ''}": i for i in issues}
+                            selected_issue_name = st.selectbox(
+                                "Select Issue",
+                                ["None"] + list(issue_options.keys()),
+                                help="Choose a specific issue this job addresses"
+                            )
+                            
+                            if selected_issue_name != "None":
+                                selected_issue = issue_options[selected_issue_name]
+                                
+                                # Show issue details
+                                with st.expander("Issue Details", expanded=False):
+                                    st.text(f"ID: #{selected_issue['id']}")
+                                    st.text(f"Status: {selected_issue['status']['name']}")
+                                    st.text(f"Priority: {selected_issue['priority']['name']}")
+                                    st.text(f"Tracker: {selected_issue['tracker']['name']}")
+                                    if selected_issue['description']:
+                                        st.text("Description:")
+                                        st.text_area("", value=selected_issue['description'], height=100, disabled=True)
+                        else:
+                            st.info("No open issues found in this project")
+                            
+                    except Exception as e:
+                        st.error(f"Failed to load issues: {str(e)}")
+        else:
+            st.info("Connect to Redmine in the 'Redmine Setup' page to link jobs to issues")
+        
         st.subheader("AI Instructions")
+        
+        # Pre-fill context and prompt if issue is selected
+        default_context = ""
+        default_prompt = ""
+        
+        if selected_issue:
+            default_context = f"Working on Redmine issue #{selected_issue['id']}: {selected_issue['subject']}\n\n"
+            if selected_issue['description']:
+                default_context += f"Issue Description:\n{selected_issue['description']}\n\n"
+            default_context += f"Priority: {selected_issue['priority']['name']}\nTracker: {selected_issue['tracker']['name']}"
+            
+            default_prompt = f"Address the requirements described in issue #{selected_issue['id']}: {selected_issue['subject']}"
+        
         context = st.text_area(
             "Context/Background",
+            value=default_context,
             placeholder="Provide context about the codebase, project goals, or any relevant background information...",
             height=100,
             help="Background information to help the AI understand the codebase"
@@ -90,6 +277,7 @@ def job_configuration_page():
         
         prompt = st.text_area(
             "Modification Instructions *",
+            value=default_prompt,
             placeholder="Describe the changes you want the AI to make to the code...",
             height=150,
             help="Detailed instructions for code modifications"
