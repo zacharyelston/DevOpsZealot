@@ -33,7 +33,7 @@ class GitWorker:
             self.repo = git.Repo.clone_from(repo_url, self.repo_path)
             return self.repo_path
             
-        except git.exc.GitCommandError as e:
+        except git.GitCommandError as e:
             raise Exception(f"Failed to clone repository: {str(e)}")
         except Exception as e:
             raise Exception(f"Unexpected error during clone: {str(e)}")
@@ -59,7 +59,7 @@ class GitWorker:
             new_branch = self.repo.create_head(branch_name)
             new_branch.checkout()
             
-        except git.exc.GitCommandError as e:
+        except git.GitCommandError as e:
             raise Exception(f"Failed to create branch '{branch_name}': {str(e)}")
     
     def find_files(self, patterns: List[str]) -> List[str]:
