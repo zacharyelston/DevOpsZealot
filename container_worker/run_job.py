@@ -177,6 +177,15 @@ def execute_job(config, git_worker, ai_worker, redmine_worker):
         log_error(error_msg)
         results["error"] = error_msg
         results["logs"].append(error_msg)
+        
+        # Add Redmine failure comment if applicable
+        redmine_issue_id = config.get("redmine_issue_id")
+        if redmine_issue_id and redmine_worker and redmine_worker.is_connected():
+            redmine_worker.add_failure_comment(
+                redmine_issue_id,
+                config["job_id"],
+                error_msg
+            )
     
     return results
 
