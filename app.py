@@ -317,32 +317,48 @@ def job_configuration_page():
                     context=context,
                     file_patterns=file_patterns,
                     auth_username=auth_username if auth_username else None,
-                    auth_token=auth_token if auth_token else None
+                    auth_token=auth_token if auth_token else None,
+                    redmine_issue_id=selected_issue['id'] if selected_issue else None
                 )
                 
                 st.success(f"✅ Job configured with ID: {config['job_id']}")
                 
                 # Display configuration
                 with st.expander("Job Configuration", expanded=True):
-                    st.json({
+                    job_display = {
                         "job_id": config["job_id"],
                         "repo_url": config["repo_url"],
                         "branch_name": config["branch_name"],
                         "base_branch": config["base_branch"],
                         "file_patterns": config["file_patterns"],
-                        "has_auth": config["auth"] is not None
-                    })
+                        "has_auth": config["auth"] is not None,
+                        "redmine_issue": f"#{selected_issue['id']} - {selected_issue['subject']}" if selected_issue else "None"
+                    }
+                    st.json(job_display)
+                
+                # Create Redmine link if issue selected
+                if selected_issue and st.session_state.redmine_connection:
+                    try:
+                        st.session_state.redmine_connection.create_issue_link_comment(
+                            selected_issue['id'],
+                            config['job_id'],
+                            repo_url,
+                            branch_name
+                        )
+                        st.success(f"Linked job to Redmine issue #{selected_issue['id']}")
+                    except Exception as e:
+                        st.warning(f"Job created but failed to link to Redmine: {str(e)}")
                 
                 # Launch container
                 with st.spinner("Launching container..."):
                     success = st.session_state.container_manager.launch_container(config['job_id'])
                     
                     if success:
-                        st.success("🚀 Container launched successfully!")
+                        st.success("Container launched successfully!")
                         st.info("Check the 'Active Jobs' page to monitor progress.")
                         st.session_state.active_jobs[config['job_id']] = config
                     else:
-                        st.error("❌ Failed to launch container. Check container logs for details.")
+                        st.error("Failed to launch container. Check container logs for details.")
                         
             except Exception as e:
                 st.error(f"Error creating job: {str(e)}")

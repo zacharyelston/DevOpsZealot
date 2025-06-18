@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from git_worker import GitWorker
 from ai_worker import AIWorker
+from redmine_worker import RedmineWorker
 
 def main():
     """Main entry point for container job execution."""
@@ -26,9 +27,16 @@ def main():
         # Initialize workers
         git_worker = GitWorker()
         ai_worker = AIWorker()
+        redmine_worker = None
+        
+        # Initialize Redmine worker if credentials available
+        redmine_url = os.getenv("REDMINE_URL")
+        redmine_api_key = os.getenv("REDMINE_API_KEY")
+        if redmine_url and redmine_api_key:
+            redmine_worker = RedmineWorker(redmine_url, api_key=redmine_api_key)
         
         # Execute job workflow
-        results = execute_job(config, git_worker, ai_worker)
+        results = execute_job(config, git_worker, ai_worker, redmine_worker)
         
         # Save results
         results_path = "/workspace/job_data/results.json"
@@ -46,7 +54,7 @@ def main():
         log_error(f"Unexpected error: {str(e)}")
         sys.exit(1)
 
-def execute_job(config, git_worker, ai_worker):
+def execute_job(config, git_worker, ai_worker, redmine_worker):
     """Execute the complete job workflow."""
     results = {
         "job_id": config["job_id"],
@@ -58,6 +66,18 @@ def execute_job(config, git_worker, ai_worker):
     }
     
     try:
+        # Step 0: Add Redmine start comment if applicable
+        redmine_issue_id = config.get("redmine_issue_id")
+        if redmine_issue_id and redmine_worker and redmine_worker.is_connected():
+            log_info(f"Adding start comment to Redmine issue #{redmine_issue_id}...")
+            redmine_worker.add_job_start_comment(
+                redmine_issue_id,
+                config["job_id"],
+                config["repo_url"],
+                config["branch_name"]
+            )
+            results["logs"].append(f"Added start comment to Redmine issue #{redmine_issue_id}")
+        
         # Step 1: Clone repository
         log_info("Cloning repository...")
         repo_path = git_worker.clone_repository(
@@ -137,6 +157,17 @@ def execute_job(config, git_worker, ai_worker):
         log_info("Pushing changes...")
         git_worker.push_changes()
         results["logs"].append("Changes pushed to remote repository")
+        
+        # Step 7: Add Redmine completion comment if applicable
+        if redmine_issue_id and redmine_worker and redmine_worker.is_connected():
+            log_info(f"Adding completion comment to Redmine issue #{redmine_issue_id}...")
+            redmine_worker.add_completion_comment(
+                redmine_issue_id,
+                config["job_id"],
+                commit_hash,
+                modified_files
+            )
+            results["logs"].append(f"Added completion comment to Redmine issue #{redmine_issue_id}")
         
         results["success"] = True
         log_info("Job completed successfully")
