@@ -75,7 +75,11 @@ Please modify the code according to the instructions and return only the complet
                     max_tokens=4000
                 )
                 
-                modified_code = response.choices[0].message.content.strip()
+                modified_code = response.choices[0].message.content
+                if not modified_code:
+                    return current_content
+                
+                modified_code = modified_code.strip()
                 
                 # Clean up the response (remove markdown if present)
                 if modified_code.startswith("```"):
