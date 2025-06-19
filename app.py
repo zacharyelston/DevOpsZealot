@@ -7,10 +7,10 @@ from redmine_integration import RedmineIntegration
 
 # Configure page
 st.set_page_config(
-    page_title="AI Git Container Orchestrator",
-    page_icon="🚀",
+    page_title="DevOps AI Assistant",
+    page_icon="🔧",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Initialize session state
@@ -28,26 +28,27 @@ if 'selected_issues' not in st.session_state:
     st.session_state.selected_issues = {}
 
 def main():
-    st.title("🚀 AI Git Container Orchestrator")
-    st.markdown("Launch containerized AI agents to modify Git repositories")
+    st.title("🔧 DevOps AI Assistant")
+    st.markdown("Intelligent code modifications linked to project management")
     
-    # Sidebar navigation
-    with st.sidebar:
-        st.header("Navigation")
-        page = st.selectbox(
-            "Select Page",
-            ["Redmine Setup", "Job Configuration", "Active Jobs", "Job History", "Container Logs"]
-        )
+    # Tab navigation
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🔗 Redmine Setup", 
+        "⚙️ Configure Job", 
+        "🚀 Active Jobs", 
+        "📋 Job History", 
+        "📄 Container Logs"
+    ])
     
-    if page == "Redmine Setup":
+    with tab1:
         redmine_setup_page()
-    elif page == "Job Configuration":
+    with tab2:
         job_configuration_page()
-    elif page == "Active Jobs":
+    with tab3:
         active_jobs_page()
-    elif page == "Job History":
+    with tab4:
         job_history_page()
-    elif page == "Container Logs":
+    with tab5:
         container_logs_page()
 
 def redmine_setup_page():

@@ -10,7 +10,7 @@ from container_manager import ContainerManager
 
 def demo_redmine_workflow():
     """Demonstrate the complete Redmine integration workflow."""
-    print("=== AI Git Container Orchestrator with Redmine Integration ===\n")
+    print("=== DevOps AI Assistant with Redmine Integration ===\n")
     
     # Step 1: Connect to Redmine
     print("1. Connecting to Redmine...")
