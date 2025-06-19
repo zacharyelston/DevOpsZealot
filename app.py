@@ -17,6 +17,8 @@ st.set_page_config(
 # Initialize session state
 if 'container_manager' not in st.session_state:
     st.session_state.container_manager = ContainerManager()
+if 'config_storage' not in st.session_state:
+    st.session_state.config_storage = ConfigStorage()
 if 'active_jobs' not in st.session_state:
     st.session_state.active_jobs = {}
 if 'refresh_counter' not in st.session_state:
@@ -27,6 +29,12 @@ if 'redmine_projects' not in st.session_state:
     st.session_state.redmine_projects = []
 if 'selected_issues' not in st.session_state:
     st.session_state.selected_issues = {}
+
+# Load configurations
+if 'job_defaults' not in st.session_state:
+    st.session_state.job_defaults = st.session_state.config_storage.load_job_defaults()
+if 'app_settings' not in st.session_state:
+    st.session_state.app_settings = st.session_state.config_storage.load_app_settings()
 
 def main():
     st.title("⚡ DevOps AI Zealot")
@@ -55,33 +63,91 @@ def main():
 def redmine_setup_page():
     st.header("Redmine Integration Setup")
     
-    # Connection configuration
-    with st.form("redmine_connection_form"):
-        st.subheader("Server Configuration")
+    # Check for environment secrets first
+    config = st.session_state.config_storage.get_redmine_config()
+    
+    if config["api_key"] or (config["username"] and config["password"]):
+        st.success("🔐 Redmine credentials found in environment secrets")
         
-        redmine_url = st.text_input(
-            "Redmine Server URL",
-            value="https://redstone.redminecloud.net",
-            help="Your Redmine server URL"
-        )
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info(f"Server: {config['url']}")
+            if config["api_key"]:
+                st.info("Authentication: API Key (from secrets)")
+            else:
+                st.info("Authentication: Username/Password (from secrets)")
         
-        auth_method = st.radio(
-            "Authentication Method",
-            ["API Key", "Username/Password"]
-        )
+        with col2:
+            if st.button("Connect Now", type="primary"):
+                try:
+                    with st.spinner("Connecting to Redmine..."):
+                        redmine = RedmineIntegration(
+                            url=config["url"],
+                            api_key=config["api_key"],
+                            username=config["username"],
+                            password=config["password"]
+                        )
+                        
+                        connection_test = redmine.test_connection()
+                        
+                        if connection_test["success"]:
+                            st.session_state.redmine_connection = redmine
+                            st.session_state.redmine_projects = redmine.get_projects()
+                            st.success("Connected successfully!")
+                            st.rerun()
+                        else:
+                            st.error(f"Connection failed: {connection_test['error']}")
+                except Exception as e:
+                    st.error(f"Connection error: {str(e)}")
+    else:
+        st.warning("🔑 No Redmine credentials found in environment secrets")
         
-        if auth_method == "API Key":
-            api_key = st.text_input(
-                "API Key",
-                type="password",
-                help="Your Redmine API key (found in your account settings)"
+        with st.expander("📋 How to set up Redmine secrets", expanded=True):
+            st.markdown("""
+            **Set these environment secrets in your Replit project:**
+            
+            1. **REDMINE_URL** - Your Redmine server URL
+            2. **REDMINE_API_KEY** - Your API key (recommended)
+            
+            OR
+            
+            2. **REDMINE_USERNAME** - Your username  
+            3. **REDMINE_PASSWORD** - Your password
+            
+            **To add secrets:**
+            1. Go to your Replit project settings
+            2. Click on "Secrets" tab
+            3. Add the required environment variables
+            4. Restart this application
+            """)
+        
+        st.subheader("Manual Connection (Temporary)")
+        st.caption("For testing only - credentials won't be saved")
+        
+        with st.form("manual_redmine_form"):
+            redmine_url = st.text_input(
+                "Redmine Server URL",
+                value=config["url"],
+                help="Your Redmine server URL"
             )
-            username = None
-            password = None
-        else:
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            api_key = None
+            
+            auth_method = st.radio(
+                "Authentication Method",
+                ["API Key", "Username/Password"]
+            )
+            
+            if auth_method == "API Key":
+                api_key = st.text_input(
+                    "API Key",
+                    type="password",
+                    help="Your Redmine API key (found in your account settings)"
+                )
+                username = None
+                password = None
+            else:
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                api_key = None
         
         if st.form_submit_button("Connect to Redmine", type="primary"):
             if not redmine_url:
