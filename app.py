@@ -326,37 +326,86 @@ def job_configuration_page():
                 
                 if selected_project_name != "None":
                     selected_project = project_options[selected_project_name]
+                    project_key = f"issues_{selected_project['identifier']}"
                     
-                    # Load issues for selected project
-                    try:
-                        with st.spinner("Loading issues..."):
-                            issues = st.session_state.redmine_connection.get_project_issues(selected_project['identifier'])
+                    # Auto-load issues if not already loaded
+                    if project_key not in st.session_state:
+                        try:
+                            with st.spinner("Loading issues..."):
+                                issues = st.session_state.redmine_connection.get_project_issues(selected_project['identifier'], status_filter="all")
+                                st.session_state[project_key] = issues
+                            st.success(f"Loaded {len(issues)} issues")
+                        except Exception as e:
+                            st.error(f"Failed to auto-load issues: {str(e)}")
+                            st.session_state[project_key] = []
+                    
+                    # Button to refresh issues
+                    col_a, col_b = st.columns([2, 1])
+                    with col_a:
+                        st.write(f"Project: {selected_project['name']}")
+                    with col_b:
+                        if st.button("Refresh Issues", key=f"refresh_{selected_project['identifier']}"):
+                            try:
+                                with st.spinner("Refreshing issues..."):
+                                    # Try loading all issues (not just open ones)
+                                    issues = st.session_state.redmine_connection.get_project_issues(selected_project['identifier'], status_filter="all")
+                                    st.session_state[project_key] = issues
+                                st.success(f"Refreshed {len(issues)} issues (all statuses)")
+                                if len(issues) == 0:
+                                    st.warning("No issues found in this project. Try checking the project permissions or if issues exist.")
+                                else:
+                                    # Show issue IDs for debugging
+                                    issue_ids = [f"#{issue['id']}" for issue in issues[:10]]
+                                    st.info(f"Found issues: {', '.join(issue_ids)}{'...' if len(issues) > 10 else ''}")
+                            except Exception as e:
+                                st.error(f"Failed to load issues: {str(e)}")
+                                # Try a fallback with just open issues
+                                try:
+                                    st.info("Trying to load open issues only...")
+                                    issues = st.session_state.redmine_connection.get_project_issues(selected_project['identifier'], status_filter="open")
+                                    st.session_state[project_key] = issues
+                                    st.success(f"Loaded {len(issues)} open issues")
+                                except Exception as e2:
+                                    st.error(f"Also failed with open issues: {str(e2)}")
+                    
+                    # Show issues if loaded
+                    if project_key in st.session_state and st.session_state[project_key]:
+                        issues = st.session_state[project_key]
                         
-                        if issues:
-                            issue_options = {f"#{i['id']} - {i['subject'][:60]}{'...' if len(i['subject']) > 60 else ''}": i for i in issues}
-                            selected_issue_name = st.selectbox(
-                                "Select Issue",
-                                ["None"] + list(issue_options.keys()),
-                                help="Choose a specific issue this job addresses"
-                            )
+                        # Create issue options with full details
+                        issue_options = {}
+                        for issue in issues:
+                            key = f"#{issue['id']} - {issue['subject']}"
+                            issue_options[key] = issue
+                        
+                        selected_issue_name = st.selectbox(
+                            "Select Issue",
+                            ["None"] + list(issue_options.keys()),
+                            help="Choose a specific issue this job addresses"
+                        )
+                        
+                        if selected_issue_name != "None":
+                            selected_issue = issue_options[selected_issue_name]
                             
-                            if selected_issue_name != "None":
-                                selected_issue = issue_options[selected_issue_name]
-                                
-                                # Show issue details
-                                with st.expander("Issue Details", expanded=False):
-                                    st.text(f"ID: #{selected_issue['id']}")
-                                    st.text(f"Status: {selected_issue['status']['name']}")
-                                    st.text(f"Priority: {selected_issue['priority']['name']}")
-                                    st.text(f"Tracker: {selected_issue['tracker']['name']}")
-                                    if selected_issue['description']:
-                                        st.text("Description:")
-                                        st.text_area("", value=selected_issue['description'], height=100, disabled=True)
-                        else:
-                            st.info("No open issues found in this project")
+                            # Show issue details in a more compact format
+                            col1, col2 = st.columns([1, 1])
+                            with col1:
+                                st.text(f"Status: {selected_issue['status']['name']}")
+                                st.text(f"Priority: {selected_issue['priority']['name']}")
+                            with col2:
+                                st.text(f"Tracker: {selected_issue['tracker']['name']}")
+                                if 'assigned_to' in selected_issue and selected_issue['assigned_to']:
+                                    st.text(f"Assigned: {selected_issue['assigned_to']['name']}")
                             
-                    except Exception as e:
-                        st.error(f"Failed to load issues: {str(e)}")
+                            # Show description if available
+                            if selected_issue.get('description'):
+                                with st.expander("Issue Description", expanded=False):
+                                    st.text_area("", value=selected_issue['description'], height=100, disabled=True)
+                    
+                    elif project_key not in st.session_state:
+                        st.info("Click 'Load Issues' to see available issues for this project")
+                    else:
+                        st.warning("No issues found in this project")
         else:
             st.warning("⚠️ Redmine not connected")
             st.info("Go to the 'Redmine Setup' tab to connect and access your issues")
