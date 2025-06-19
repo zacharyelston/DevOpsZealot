@@ -205,10 +205,11 @@ def job_configuration_page():
                 help="Personal access token or password"
             )
         
-        st.subheader("Redmine Issue (Optional)")
+        st.subheader("Redmine Issue Integration")
         selected_issue = None
         
         if st.session_state.redmine_connection:
+            st.success("✅ Connected to Redmine")
             # Project selection
             if st.session_state.redmine_projects:
                 project_options = {f"{p['name']} ({p['identifier']})": p for p in st.session_state.redmine_projects}
@@ -252,7 +253,18 @@ def job_configuration_page():
                     except Exception as e:
                         st.error(f"Failed to load issues: {str(e)}")
         else:
-            st.info("Connect to Redmine in the 'Redmine Setup' page to link jobs to issues")
+            st.warning("⚠️ Redmine not connected")
+            st.info("Go to the 'Redmine Setup' tab to connect and access your issues")
+            
+            # Show a helpful message about what they can do
+            with st.expander("💡 How to select an issue like #153"):
+                st.markdown("""
+                1. **Connect to Redmine**: Go to the 'Redmine Setup' tab and enter your API key
+                2. **Return here**: Come back to this 'Configure Job' tab
+                3. **Select project**: Choose your project from the dropdown (e.g., "Red Rust")
+                4. **Pick your issue**: Select "#153 - [description]" from the issue list
+                5. **Configure**: The AI instructions will auto-populate based on the issue
+                """)
         
         st.subheader("AI Instructions")
         
