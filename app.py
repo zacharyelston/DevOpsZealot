@@ -7,8 +7,8 @@ from redmine_integration import RedmineIntegration
 
 # Configure page
 st.set_page_config(
-    page_title="DevOps AI Assistant",
-    page_icon="🔧",
+    page_title="DevOps AI Zealot",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -28,8 +28,8 @@ if 'selected_issues' not in st.session_state:
     st.session_state.selected_issues = {}
 
 def main():
-    st.title("🔧 DevOps AI Assistant")
-    st.markdown("Intelligent code modifications linked to project management")
+    st.title("⚡ DevOps AI Zealot")
+    st.markdown("Relentless code optimization driven by project requirements")
     
     # Tab navigation
     tab1, tab2, tab3, tab4, tab5 = st.tabs([

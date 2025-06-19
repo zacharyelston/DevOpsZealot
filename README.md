@@ -1,4 +1,4 @@
-# DevOps AI Assistant
+# DevOps AI Zealot
 
 A Streamlit-based interface for launching containerized AI agents that clone Git repositories, create branches, apply AI-powered code modifications, and push changes back to the repository. Fully integrated with Redmine project management for complete traceability.
 

@@ -147,8 +147,8 @@ def execute_job(config, git_worker, ai_worker, redmine_worker):
         commit_message = f"AI modifications: {config['prompt'][:100]}..."
         commit_hash = git_worker.commit_changes(
             message=commit_message,
-            author_name="AI Code Modifier",
-            author_email="ai@codemodifier.com"
+            author_name="DevOps AI Zealot",
+            author_email="zealot@devops.ai"
         )
         results["commit_hash"] = commit_hash
         results["logs"].append(f"Changes committed: {commit_hash}")
