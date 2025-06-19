@@ -36,9 +36,38 @@ if 'job_defaults' not in st.session_state:
 if 'app_settings' not in st.session_state:
     st.session_state.app_settings = st.session_state.config_storage.load_app_settings()
 
+# Auto-connect to Redmine if credentials are available
+if 'auto_connected' not in st.session_state:
+    st.session_state.auto_connected = False
+
+if not st.session_state.auto_connected and not st.session_state.redmine_connection:
+    config = st.session_state.config_storage.get_redmine_config()
+    if config["api_key"] or (config["username"] and config["password"]):
+        try:
+            url = config["url"] if config["url"] else "https://redstone.redminecloud.net"
+            redmine = RedmineIntegration(
+                url=url,
+                api_key=config["api_key"],
+                username=config["username"],
+                password=config["password"]
+            )
+            connection_test = redmine.test_connection()
+            if connection_test["success"]:
+                st.session_state.redmine_connection = redmine
+                st.session_state.redmine_projects = redmine.get_projects()
+        except Exception:
+            pass  # Silent fail for auto-connection
+    st.session_state.auto_connected = True
+
 def main():
     st.title("⚡ DevOps AI Zealot")
     st.markdown("Relentless code optimization driven by project requirements")
+    
+    # Connection status indicator
+    if st.session_state.redmine_connection:
+        st.success("Connected to Redmine - Ready to select issues")
+    else:
+        st.warning("Redmine not connected - Set up connection in first tab")
     
     # Tab navigation
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -277,6 +306,15 @@ def job_configuration_page():
         
         if st.session_state.redmine_connection:
             st.success("✅ Connected to Redmine")
+            
+            # Auto-load projects if not already loaded
+            if not st.session_state.redmine_projects:
+                try:
+                    with st.spinner("Loading projects..."):
+                        st.session_state.redmine_projects = st.session_state.redmine_connection.get_projects()
+                except Exception as e:
+                    st.error(f"Failed to load projects: {str(e)}")
+            
             # Project selection
             if st.session_state.redmine_projects:
                 project_options = {f"{p['name']} ({p['identifier']})": p for p in st.session_state.redmine_projects}
