@@ -17,7 +17,7 @@ DevOpsZealot allows AI agents (zealots) to:
 - 🔒 **Secure**: All operations in isolated Docker containers
 - 🔍 **Observable**: Complete audit trail and metrics
 - ✅ **Validated**: Pre-commit hooks and security scanning
-- 🔄 **GitOps**: All changes through PR workflow
+- 🔄 **GitOps**: All changes through PR workflow with detailed commit messages
 - 📊 **Monitored**: Prometheus metrics and structured logging
 
 ## Quick Start
@@ -45,6 +45,31 @@ pytest
 # Start server
 python -m zealot.server
 ```
+
+## Detailed Commit Messages
+
+DevOpsZealot generates structured, informative commit messages that provide clear context about AI-driven changes:
+
+```
+DevOpsZealot: Script Improvement - Add support for..., Improve error...
+
+Files modified: transcribe_video.sh, lib/utils.sh
+
+## Changes Summary
+This commit implements improvements to the script improvement as specified in the requirements.
+
+## Requirements Implemented
+- Add support for multiple output formats (srt, vtt, text)
+- Improve error handling in both scripts with proper error codes
+- Add batch processing mode to handle multiple files at once
+
+## Validation
+Changes have been validated against:
+- shellcheck
+- script_execution_test
+```
+
+These detailed commit messages make code reviews more efficient and create a clear audit trail of AI-driven changes.
 
 ## Architecture
 
