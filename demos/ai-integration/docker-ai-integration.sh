@@ -150,7 +150,7 @@ def main():
             auth_repo_url = repo_url
         
         # Clone the repository
-        target_repo = Path('/workspace')
+        target_repo = Path('/tmp/workspace')
         if target_repo.exists():
             logger.info(f"Cleaning workspace directory: {target_repo}")
             shutil.rmtree(target_repo)
@@ -313,13 +313,13 @@ BRANCH_NAME=$(grep -o '"branch": "[^"]*"' "${TEMP_DIR}/context.json" | cut -d'"'
 echo -e "\n${BLUE}Starting container with context file using remote repo${NC}"
 echo -e "${BLUE}Using branch from context.json: ${BRANCH_NAME}${NC}"
 
-# Create a workspace directory in the container
+# Create a workspace directory in the container with appropriate permissions
 docker run --rm \
   -v "${TEMP_DIR}:/app" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
   "${ENV_ARGS[@]}" \
   --env ZEALOT_CONTAINER_MODE=true \
-  "${IMAGE_NAME}" mkdir -p /workspace
+  "${IMAGE_NAME}" bash -c "mkdir -p /tmp/workspace && chmod 777 /tmp/workspace"
 
 # Run the AI integration script
 docker run --rm \
