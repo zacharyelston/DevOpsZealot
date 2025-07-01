@@ -1,0 +1,68 @@
+# DevOpsZealot
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.cache
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+*.log
+docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Secrets
+*.pem
+*.key
+*.crt
+*.p12
+credentials.json
+service-account.json
+
+# Test artifacts
+test-results/
+coverage.xml
+*.cover
+
+# Temporary files
+tmp/
+temp/
+workspace/

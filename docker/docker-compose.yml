@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  zealot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.zealot
+    container_name: devops-zealot
+    ports:
+      - "8090:8090"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../config:/app/config:ro
+    depends_on:
+      - redis
+    networks:
+      - zealot-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: zealot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - zealot-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: zealot-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - zealot-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+
+volumes:
+  redis-data:
+  prometheus-data:
+
+networks:
+  zealot-network:
+    driver: bridge
