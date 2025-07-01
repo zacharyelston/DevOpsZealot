@@ -105,10 +105,6 @@ import subprocess
 from ai_file_editor import AIFileEditor
 import validators
 
-# Import our modules
-from ai_file_editor import AIFileEditor
-import validators
-
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
