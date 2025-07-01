@@ -308,7 +308,10 @@ for arg in "${ENV_ARGS[@]}"; do
 done
 
 # 3. Run the Docker container
+# Extract branch name from context.json for display
+BRANCH_NAME=$(grep -o '"branch": "[^"]*"' "${TEMP_DIR}/context.json" | cut -d'"' -f4)
 echo -e "\n${BLUE}Starting container with context file using remote repo${NC}"
+echo -e "${BLUE}Using branch from context.json: ${BRANCH_NAME}${NC}"
 
 # Create a workspace directory in the container
 docker run --rm \
@@ -338,15 +341,15 @@ if [ $EXIT_CODE -eq 0 ]; then
   echo -e "${GREEN}AI Integration Demo completed successfully!${NC}"
   echo -e "${GREEN}=============================================${NC}"
   echo -e "\n${YELLOW}Changes have been made to the remote repository${NC}"
-  echo -e "${YELLOW}Branch: redmine-123${NC}"
+  echo -e "${YELLOW}Branch: ${BRANCH_NAME}${NC}"
   
   echo -e "\n${BLUE}To create a pull request for these changes:${NC}"
-  echo -e "  Visit the repository's GitHub page and create a PR for branch 'redmine-123'"
+  echo -e "  Visit the repository's GitHub page and create a PR for branch '${BRANCH_NAME}'"
   
   # Extract repository URL from context.json
   REPO_URL=$(grep -o '"repository": "[^"]*"' "${TEMP_DIR}/context.json" | cut -d'"' -f4)
   if [[ $REPO_URL == https://github.com/* ]]; then
-    PR_URL="${REPO_URL%.git}/compare/redmine-123?expand=1"
+    PR_URL="${REPO_URL%.git}/compare/${BRANCH_NAME}?expand=1"
     echo -e "${BLUE}PR URL: ${PR_URL}${NC}"
   fi
 else
