@@ -102,8 +102,8 @@ import json
 import shutil
 from pathlib import Path
 import subprocess
-import subprocess
-from pathlib import Path
+from ai_file_editor import AIFileEditor
+import validators
 
 # Import our modules
 from ai_file_editor import AIFileEditor
@@ -240,7 +240,6 @@ def main():
         modified_files = [target_repo / f for f in result.stdout.strip().split('\n') if f]
         
         # Get validation rules from context
-        import json
         with open(context_file) as f:
             context = json.load(f)
         
