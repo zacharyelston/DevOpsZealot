@@ -52,6 +52,18 @@ class Config:
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
     log_format: str = os.getenv("LOG_FORMAT", "json")
     
+    # Continue.dev Integration
+    enable_continue_integration: bool = os.getenv("ENABLE_CONTINUE_INTEGRATION", "true").lower() == "true"
+    continue_config_path: str = os.getenv("CONTINUE_CONFIG_PATH", "~/.continue/config.json")
+    continue_api_url: str = os.getenv("CONTINUE_API_URL", "http://localhost:11434")
+    continue_default_model: str = os.getenv("CONTINUE_DEFAULT_MODEL", "gpt-4")
+    use_local_models: bool = os.getenv("USE_LOCAL_MODELS", "false").lower() == "true"
+    local_model_path: Optional[str] = os.getenv("LOCAL_MODEL_PATH", None)
+    prefer_local_models: bool = os.getenv("PREFER_LOCAL_MODELS", "false").lower() == "true"
+    
+    # API Security
+    api_key_header: Optional[str] = os.getenv("API_KEY_HEADER", None)
+    
     def validate(self):
         """Validate configuration"""
         errors = []

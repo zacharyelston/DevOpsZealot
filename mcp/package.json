@@ -1,0 +1,17 @@
+{
+  "name": "devops-zealot-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for DevOpsZealot integration with Continue.dev",
+  "type": "module",
+  "main": "zealot-mcp-server.js",
+  "scripts": {
+    "start": "node zealot-mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.1.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  }
+}

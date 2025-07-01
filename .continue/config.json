@@ -1,0 +1,116 @@
+{
+  "models": [
+    {
+      "title": "Infrastructure Expert",
+      "model": "gpt-4",
+      "provider": "openai",
+      "apiKey": "${OPENAI_API_KEY}",
+      "systemMessage": "You are an expert in infrastructure as code, specializing in Terraform, Kubernetes, AWS, and security best practices. When editing infrastructure code, always consider security, cost optimization, and maintainability."
+    },
+    {
+      "title": "Terraform Validator",
+      "model": "claude-3-opus",
+      "provider": "anthropic",
+      "apiKey": "${ANTHROPIC_API_KEY}",
+      "systemMessage": "You are a Terraform validation expert. Focus on finding security issues, best practice violations, and potential problems in infrastructure code."
+    },
+    {
+      "title": "Local Code Assistant",
+      "model": "codellama",
+      "provider": "ollama",
+      "systemMessage": "You are a helpful coding assistant for infrastructure development."
+    }
+  ],
+  "contextProviders": [
+    {
+      "name": "zealot",
+      "params": {
+        "baseUrl": "http://localhost:8080",
+        "types": ["tasks", "templates", "validation"]
+      }
+    },
+    {
+      "name": "codebase",
+      "params": {
+        "nFilesTranscript": 5,
+        "useTreeSitter": true,
+        "searchEmbeddings": true
+      }
+    }
+  ],
+  "slashCommands": [
+    {
+      "name": "zealot-task",
+      "description": "Create a DevOpsZealot infrastructure task",
+      "run": "scripts/zealot_task.js"
+    },
+    {
+      "name": "validate-tf",
+      "description": "Validate Terraform configuration",
+      "run": "scripts/validate_terraform.js"
+    },
+    {
+      "name": "security-scan",
+      "description": "Run security scan on infrastructure code",
+      "run": "scripts/security_scan.js"
+    },
+    {
+      "name": "cost-estimate",
+      "description": "Estimate infrastructure costs",
+      "run": "scripts/cost_estimate.js"
+    }
+  ],
+  "customCommands": [
+    {
+      "name": "Harden Security",
+      "prompt": "Review this infrastructure code and apply security hardening. Focus on: encryption at rest, least privilege IAM, network isolation, logging/monitoring, and compliance requirements.",
+      "description": "Apply security best practices to infrastructure"
+    },
+    {
+      "name": "Optimize Resources",
+      "prompt": "Analyze and optimize resource allocations in this infrastructure code. Consider: right-sizing, auto-scaling, spot instances, reserved capacity, and cost optimization.",
+      "description": "Optimize infrastructure resources and costs"
+    }
+  ],
+  "experimental": {
+    "modelContextProtocolServers": [
+      {
+        "transport": {
+          "type": "stdio",
+          "command": "node",
+          "args": ["../mcp/zealot-mcp-server.js"]
+        }
+      }
+    ]
+  },
+  "tabAutocompleteOptions": {
+    "debounceDelay": 250,
+    "maxPromptTokens": 1500,
+    "prefixPercentage": 0.5,
+    "suffixPercentage": 0.5,
+    "maxSuffixPercentage": 0.5,
+    "template": "You are an expert in {language} and infrastructure as code. Complete the following code considering security and best practices:\n\n{prefix}<CURSOR>{suffix}"
+  },
+  "rules": [
+    "Always consider security implications in infrastructure code",
+    "Follow the principle of least privilege for IAM policies",
+    "Enable encryption for all data at rest and in transit",
+    "Include proper tagging for cost tracking and compliance",
+    "Use versioning for all state files and configurations",
+    "Implement proper error handling and rollback strategies"
+  ],
+  "docs": [
+    {
+      "name": "Terraform Best Practices",
+      "startUrl": "https://www.terraform.io/docs/cloud/guides/recommended-practices/index.html"
+    },
+    {
+      "name": "AWS Well-Architected",
+      "startUrl": "https://aws.amazon.com/architecture/well-architected/"
+    },
+    {
+      "name": "Kubernetes Security",
+      "startUrl": "https://kubernetes.io/docs/concepts/security/"
+    }
+  ]
+}
