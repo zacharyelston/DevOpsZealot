@@ -1,8 +1,8 @@
 {
   "task": {
     "type": "script_improvement",
-    "repository": "/target",
-    "branch": "ai-improvements",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "branch": "redmine-123",
     "files": [
       "transcribe_video.sh",
       "extract_audio_for_macwhisper.sh",
