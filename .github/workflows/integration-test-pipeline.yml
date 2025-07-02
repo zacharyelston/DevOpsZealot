@@ -1,0 +1,108 @@
+name: DevOpsZealot Integration Pipeline
+
+on:
+  push:
+    branches:
+      - feature/remote-repo-support
+      - main
+  pull_request:
+    branches: 
+      - main
+  workflow_dispatch:
+    inputs:
+      test_branch:
+        description: 'Branch to test'
+        required: false
+        default: 'feature/remote-repo-support'
+
+jobs:
+  validate-configuration:
+    name: Validate Configuration Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Validate context files
+        run: |
+          echo "Validating context JSON files"
+          python -c "import json, glob; all(json.load(open(f)) for f in glob.glob('demos/ai-integration/context*.json')); print('✓ All JSON files are valid')"
+  
+  test-simple-remote-integration:
+    name: Test Simple Remote Integration
+    runs-on: ubuntu-latest
+    needs: validate-configuration
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Run simplified remote repository test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd demos/ai-integration
+          python test-remote-simple.py
+      
+      - name: Verify test workspace
+        run: |
+          cd demos/ai-integration/test-workspace
+          git status
+          git log -n 1
+          echo "✓ Repository successfully cloned and branch created"
+  
+  test-docker-container:
+    name: Test Docker Container Build
+    runs-on: ubuntu-latest
+    needs: validate-configuration
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: |
+          cd demos/ai-integration
+          docker build -f Dockerfile.zealot.test -t devops-zealot:ai-test .
+      
+      - name: Test Docker image
+        run: |
+          # Test basic container functionality
+          docker run --rm devops-zealot:ai-test python -c "print('Container is working')"
+      
+      - name: Verify workspace permissions
+        run: |
+          # Test workspace directory permissions
+          docker run --rm devops-zealot:ai-test bash -c "mkdir -p /tmp/workspace && chmod 777 /tmp/workspace && echo 'test' > /tmp/workspace/test.txt && cat /tmp/workspace/test.txt"
+
+  generate-test-report:
+    name: Generate Test Report
+    runs-on: ubuntu-latest
+    needs: [test-simple-remote-integration, test-docker-container]
+    steps:
+      - name: Create report
+        run: |
+          echo "## DevOpsZealot Integration Test Results" > report.md
+          echo "✅ All tests passed successfully" >> report.md
+          echo "* Configuration validation: ✅ Success" >> report.md
+          echo "* Simple remote integration: ✅ Success" >> report.md
+          echo "* Docker container build: ✅ Success" >> report.md
+          echo "## Next Steps" >> report.md
+          echo "* Review and merge the feature branch" >> report.md
+          echo "* Test with a full AI integration workflow" >> report.md
+          echo "* Document the remote repository capabilities" >> report.md
+          cat report.md
+      
+      - name: Upload report
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-report
+          path: report.md
