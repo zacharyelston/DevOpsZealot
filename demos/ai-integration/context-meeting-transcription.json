@@ -1,0 +1,48 @@
+{
+  "task": {
+    "type": "transcription_pipeline_upgrade",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "branch": "feature/whisper-integration-and-notes",
+    "files": [
+      "transcribe_video.sh",
+      "extract_audio_for_macwhisper.sh",
+      "lib/utils.sh",
+      "config/default.conf"
+    ],
+    "requirements": [
+      "Replace MacWhisper with direct Whisper CLI integration",
+      "Add capability to generate meeting notes in markdown format from transcriptions",
+      "Implement detection and extraction of action items from transcriptions",
+      "Create a structured output format with meeting overview, key topics, and action items",
+      "Add proper error handling for all stages of the pipeline",
+      "Create a new script called generate_meeting_notes.sh to process transcripts into meeting notes format"
+    ],
+    "validation_rules": [
+      "shellcheck",
+      "script_execution_test"
+    ],
+    "output_examples": [
+      {
+        "name": "Meeting Notes Format",
+        "description": "Format for the generated meeting notes markdown file",
+        "content": "# [Meeting Title] - [Date] [Time]\n\n## Meeting Overview\n- **Date:** [Date and Time]\n- **Attendees:** [Names of participants]\n- **Duration:** [Meeting duration]\n- **Recording:** [Recording filename]\n\n## Key Topics Discussed\n\n### 1. [Topic Name]\n**Owner:** [Topic Owner]  \n**Status:** [Status information]\n\n- [Key point discussed]\n- [Key point discussed]\n- [Key point discussed]\n\n### 2. [Topic Name]\n**Owner:** [Topic Owner]  \n**Status:** [Status information]\n\n- [Key point discussed]\n- [Key point discussed]\n- [Key point discussed]\n\n## Action Items\n\n1. [Action Item] - **Owner:** [Name] - **Due:** [Date]\n2. [Action Item] - **Owner:** [Name] - **Due:** [Date]\n3. [Action Item] - **Owner:** [Name] - **Due:** [Date]\n\n## Next Steps\n\n- [Next step]\n- [Next step]\n- [Next step]"
+      }
+    ],
+    "new_files": [
+      {
+        "path": "generate_meeting_notes.sh",
+        "description": "Script to generate meeting notes from transcriptions",
+        "example_usage": "./generate_meeting_notes.sh input_transcript.txt \"Meeting Title\" \"2025-07-02 14:30 EDT\" \"Alice, Bob, Charlie\" 45"
+      },
+      {
+        "path": "templates/meeting_notes_template.md",
+        "description": "Template for meeting notes",
+        "content": "# {MEETING_TITLE} - {DATE}\n\n## Meeting Overview\n- **Date:** {DATE_TIME}\n- **Attendees:** {ATTENDEES}\n- **Duration:** {DURATION} minutes\n- **Recording:** {RECORDING_FILENAME}\n\n## Key Topics Discussed\n\n{KEY_TOPICS}\n\n## Action Items\n\n{ACTION_ITEMS}\n\n## Next Steps\n\n{NEXT_STEPS}\n"
+      }
+    ]
+  },
+  "config": {
+    "ai_model": "gpt-4",
+    "verbose_logging": true
+  }
+}
