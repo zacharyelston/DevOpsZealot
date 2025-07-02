@@ -1,7 +1,7 @@
 {
   "task": {
     "type": "transcription_pipeline_upgrade",
-    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "repository": "https://github.com/zacharyelston/transcribe-demo",
     "branch": "feature/whisper-integration-and-notes",
     "files": [
       "transcribe_video.sh",
