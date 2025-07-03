@@ -1,0 +1,49 @@
+{
+  "task": {
+    "name": "Whisper MP4 Transcription GitHub Actions Workflow",
+    "description": "Create a GitHub Actions workflow to test the Whisper MP4 transcription script with a real MP4 file",
+    "branch": "feature/nuvo1",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "target_file": ".github/workflows/test-whisper-transcribe.yml",
+    "file_type": "yaml",
+    "template_type": "github_actions_workflow",
+    "requirements": [
+      "IMPORTANT: Create ONLY ONE file: a GitHub Actions workflow file at the exact path '.github/workflows/test-whisper-transcribe.yml'",
+      "DO NOT create any other files like output.sh or similar",
+      "The workflow must be a properly formatted GitHub Actions YAML file",
+      "The workflow should run on push to the feature/nuvo1 branch when whisper_mp4_transcript.sh changes",
+      "The workflow should also run on pull requests to main/master branches",
+      "Allow manual workflow dispatch with an option for debug logging",
+      "Configure the workflow to run on ubuntu-latest",
+      "Set up the environment with Python 3.10 using actions/setup-python@v5",
+      "Install FFmpeg and Whisper dependencies",
+      "Test the whisper_mp4_transcript.sh script with input/test-meeting.mp4",
+      "Use a small Whisper model (tiny) to make the test faster",
+      "Output the transcript to test-output/test-meeting.txt",
+      "Verify that the transcript was generated correctly",
+      "Upload the transcript as an artifact for review using actions/upload-artifact@v4"
+    ],
+    "validation_rules": [
+      "The ONLY file created should be '.github/workflows/test-whisper-transcribe.yml'",
+      "The file MUST be a valid YAML file for GitHub Actions",
+      "The workflow must reference the correct file path 'input/test-meeting.mp4'",
+      "The workflow must install FFmpeg before running the script",
+      "The workflow must install Whisper dependencies",
+      "The workflow must make the script executable",
+      "The workflow must check if the transcript was generated",
+      "The workflow must upload artifacts properly"
+    ],
+    "file_paths": {
+      "create": [".github/workflows/test-whisper-transcribe.yml"],
+      "modify": [],
+      "delete": []
+    }
+  },
+  "tools": {
+    "generation": {
+      "model": "claude-3-opus-20240229",
+      "temperature": 0.7,
+      "max_tokens": 4000
+    }
+  }
+}
