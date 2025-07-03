@@ -4,11 +4,11 @@
     "description": "Create a GitHub Actions workflow to test the Whisper MP4 transcription script with a real MP4 file",
     "branch": "feature/nuvo1",
     "repository": "https://github.com/zacharyelston/transcribe-demo.git",
-    "target_file": ".github/workflows/test-whisper-transcribe.yml",
+    "target_file": ".github/workflows/test-whisper-transcribe.yaml",
     "file_type": "yaml",
     "template_type": "github_actions_workflow",
     "requirements": [
-      "IMPORTANT: Create ONLY ONE file: a GitHub Actions workflow file at the exact path '.github/workflows/test-whisper-transcribe.yml'",
+      "IMPORTANT: Create ONLY ONE file: a GitHub Actions workflow file at the exact path '.github/workflows/test-whisper-transcribe.yaml'",
       "DO NOT create any other files like output.sh or similar",
       "The workflow must be a properly formatted GitHub Actions YAML file",
       "The workflow should run on push to the feature/nuvo1 branch when whisper_mp4_transcript.sh changes",
@@ -34,7 +34,7 @@
       "The workflow must upload artifacts properly"
     ],
     "file_paths": {
-      "create": [".github/workflows/test-whisper-transcribe.yml"],
+      "create": [".github/workflows/test-whisper-transcribe.yaml"],
       "modify": [],
       "delete": []
     }
