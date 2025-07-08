@@ -1,7 +1,7 @@
 {
   "task": {
     "type": "script_improvement",
-    "repository": "https://github.com/zacharyelston/DevOpsZealot.git",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
     "branch": "feature/script-improvements",
     "files": [
       "transcribe_video.sh",
