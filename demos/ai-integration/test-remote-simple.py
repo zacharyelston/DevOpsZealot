@@ -55,19 +55,26 @@ def main():
     # 4. Clone repository
     try:
         github_token = os.environ.get('GITHUB_TOKEN', '')
-        if github_token and repo_url.startswith('https://github.com'):
-            # Add token to URL for authentication
-            auth_url = repo_url.replace('https://github.com', f'https://{github_token}@github.com')
-            logger.info("Using authenticated URL (token hidden)")
-        else:
-            auth_url = repo_url
-            logger.info("Using standard URL without authentication")
         
         logger.info(f"Cloning repository to {workspace_dir}")
+        
+        # Set up Git command environment with token for authentication if available
+        env = os.environ.copy()
+        if github_token and repo_url.startswith('https://github.com'):
+            logger.info("Using GitHub token authentication")
+            # Use GIT_ASKPASS to provide the token securely
+            env['GIT_ASKPASS'] = 'echo'
+            env['GIT_USERNAME'] = 'x-access-token'
+            env['GIT_PASSWORD'] = github_token
+        else:
+            logger.info("Using standard URL without authentication")
+        
+        # Clone the repository using subprocess
         result = subprocess.run(
-            ['git', 'clone', auth_url, str(workspace_dir)],
+            ['git', 'clone', repo_url, str(workspace_dir)],
             capture_output=True,
-            text=True
+            text=True,
+            env=env
         )
         
         if result.returncode != 0:
