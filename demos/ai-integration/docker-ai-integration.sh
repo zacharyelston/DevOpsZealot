@@ -102,6 +102,7 @@ import json
 import shutil
 from pathlib import Path
 import subprocess
+import traceback
 from ai_file_editor import AIFileEditor
 import validators
 
@@ -126,7 +127,8 @@ def main():
         
     # Get repository URL and branch name
     repo_url = context.get('task', {}).get('repository', '')
-    branch_name = context.get('task', {}).get('branch', 'redmine-123')
+    # Try to get branch from top-level first, then task level, then default
+    branch_name = context.get('branch') or context.get('task', {}).get('branch') or context.get('repository', {}).get('branch', 'feature/nuvo1')
     
     # Determine if it's a remote or local repository
     is_remote_repo = repo_url.startswith('http') or repo_url.startswith('git@')
@@ -248,7 +250,6 @@ def main():
             logger.info("All validations passed!")
         else:
             logger.error("Some validations failed:")
-            import json
             print(json.dumps(results, indent=2))
             return 1
         

@@ -1,0 +1,36 @@
+{
+  "task": {
+    "type": "script_creation",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "branch": "feature/nuvo1",
+    "name": "Whisper MP4 Transcription Script",
+    "description": "Create a simple, standalone script to extract audio from an MP4 file and transcribe it using Whisper CLI",
+    "objective": "Create a single, self-contained script to process MP4 video into text transcript",
+    "details": "The script should extract audio from an MP4 file and use Whisper CLI to generate a transcript. It should handle basic error checking and produce helpful output.",
+    "target_file": "whisper_mp4_transcript.sh",
+    "requirements": [
+      "Accept an MP4 file path as input",
+      "Extract audio using ffmpeg",
+      "Process the audio with Whisper CLI",
+      "Output a transcript file",
+      "Include basic error handling for missing dependencies or files",
+      "Provide clear usage instructions"
+    ],
+    "validation_rules": [
+      "shellcheck",
+      "script_execution_test"
+    ],
+    "test_files": [
+      "samples/meeting.mp4"
+    ],
+    "dependencies": [
+      "ffmpeg",
+      "whisper"
+    ]
+  },
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2025-07-02T21:54:34-04:00",
+    "format": "zealot-context-v1"
+  }
+}

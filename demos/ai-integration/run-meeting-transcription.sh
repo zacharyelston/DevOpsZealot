@@ -57,6 +57,17 @@ else
   cat "${CONTEXT_FILE}" | grep -E '\s+".*",'
 fi
 
+# Setup environment variables for Docker script
+export PULL_BEFORE_PUSH=true
+export FORCE_PUSH=false
+export AUTO_MERGE=true
+export DISABLE_PUSH_TO_REMOTE=false  # Ensure push is enabled
+echo -e "\n${BLUE}Environment variables set:${NC}"
+echo -e "  PULL_BEFORE_PUSH=$PULL_BEFORE_PUSH"
+echo -e "  FORCE_PUSH=$FORCE_PUSH"
+echo -e "  AUTO_MERGE=$AUTO_MERGE"
+echo -e "  DISABLE_PUSH_TO_REMOTE=$DISABLE_PUSH_TO_REMOTE"
+
 # Run the Docker AI integration script
 echo -e "\n${GREEN}Starting Docker AI integration with remote repository...${NC}"
 echo -e "${YELLOW}This process may take several minutes. Please be patient.${NC}"

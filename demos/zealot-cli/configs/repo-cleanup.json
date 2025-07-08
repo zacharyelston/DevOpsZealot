@@ -1,0 +1,38 @@
+{
+  "task": {
+    "name": "Repository Cleanup and Organization",
+    "description": "Clean up repository structure and remove old test files",
+    "branch": "feature/nuvo1",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "template_type": "repo_cleanup",
+    "target_file": "cleanup_report.md",
+    "file_type": "markdown",
+    "requirements": [
+      "Remove old test file .github/workflows/test-whisper-transcribe.yml (bash script) and keep only .github/workflows/test-whisper-transcribe.yaml (proper YAML)",
+      "Ensure whisper_mp4_transcript.sh exists and is executable",
+      "Create missing directories if needed (input/, test-output/)",
+      "Check for and create input/test-meeting.mp4 if missing (create a small placeholder if needed)",
+      "Document all changes made in a cleanup report markdown file",
+      "Do not modify the working GitHub Actions workflow file"
+    ],
+    "validation_rules": [
+      "Old test script file .github/workflows/test-whisper-transcribe.yml must be removed",
+      "New workflow file .github/workflows/test-whisper-transcribe.yaml must remain unmodified",
+      "whisper_mp4_transcript.sh must exist and be executable",
+      "input/ and test-output/ directories must exist",
+      "input/test-meeting.mp4 must exist"
+    ],
+    "file_paths": {
+      "create": ["input/", "test-output/", "cleanup_report.md"],
+      "modify": [],
+      "delete": [".github/workflows/test-whisper-transcribe.yml"]
+    }
+  },
+  "tools": {
+    "generation": {
+      "model": "claude-3-opus-20240229",
+      "temperature": 0.7,
+      "max_tokens": 4000
+    }
+  }
+}

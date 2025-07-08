@@ -1,0 +1,38 @@
+{
+  "task": {
+    "type": "script_improvement",
+    "repository": "https://github.com/zacharyelston/transcribe-demo",
+    "branch": "feature/whisper-cli-subtasks",
+    "files": [
+      "config/default.conf",
+      "transcribe_video.sh"
+    ],
+    "requirements": [
+      "Replace MacWhisper with direct Whisper CLI integration",
+      "Update config file to support whisper CLI parameters",
+      "Make sure WHISPER_CLI_PARAMS in config is used in transcribe_video.sh",
+      "Update the whisper command calls to use the proper CLI syntax"
+    ],
+    "validation_rules": [
+      "script_execution_test"
+    ],
+    "output_examples": [
+      {
+        "name": "Whisper CLI Command Example",
+        "description": "Example command for using Whisper CLI",
+        "content": "# Example of proper Whisper CLI usage\n\n# Configuration\nWHISPER_CLI_PATH=\"whisper\"\nWHISPER_MODEL=\"medium\"\nWHISPER_CLI_PARAMS=\"--language English --model ${WHISPER_MODEL}\"\n\n# Usage in script\nrun_transcription() {\n  local input_file=\"$1\"\n  local output_dir=\"$2\"\n  \n  # Build arguments array\n  local args=(\"${input_file}\")\n  \n  # Add parameters from config\n  for param in $WHISPER_CLI_PARAMS; do\n    args+=(\"$param\")\n  done\n  \n  # Add output directory if specified\n  if [ -n \"${output_dir}\" ]; then\n    args+=(\"--output_dir\" \"${output_dir}\")\n  fi\n  \n  # Run whisper with all parameters\n  ${WHISPER_CLI_PATH} \"${args[@]}\"\n}"
+      }
+    ]
+  },
+  "config": {
+    "ai_model": "gpt-4",
+    "verbose_logging": true,
+    "git_config": {
+      "validate_before_api_call": true,
+      "user": {
+        "name": "DevOps Zealot",
+        "email": "zealot@example.com"
+      }
+    }
+  }
+}
