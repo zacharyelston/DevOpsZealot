@@ -1,0 +1,39 @@
+{
+  "task": {
+    "type": "script_creation",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "branch": "feature/nuvo1",
+    "name": "Whisper MP4 Transcription Script",
+    "description": "Create a simple, standalone script to extract audio from an MP4 file and transcribe it using Whisper CLI",
+    "objective": "Create a single, self-contained script to process MP4 video into text transcript",
+    "details": "The script should extract audio from an MP4 file and use Whisper CLI to generate a transcript. It should handle basic error checking and produce helpful output.",
+    "requirements": [
+      "Accept an MP4 file path as input",
+      "Extract audio using ffmpeg",
+      "Process the audio with Whisper CLI",
+      "Output a transcript file",
+      "Include basic error handling for missing dependencies or files",
+      "Provide clear usage instructions"
+    ]
+  },
+  "examples": {
+    "usage": "mp4_to_transcript.sh input_video.mp4 [output_directory] [whisper_model]",
+    "expected_output": "Transcript saved to: output/input_video.txt"
+  },
+  "dependencies": [
+    {
+      "name": "ffmpeg",
+      "description": "Required for extracting audio from video files"
+    },
+    {
+      "name": "Whisper CLI",
+      "description": "Required for transcribing audio files",
+      "installation": "pip install -U openai-whisper"
+    }
+  ],
+  "testing": {
+    "sample_files": [
+      "/Users/zacelston/AlZacAI/transcribe-demo/input/test-meeting.mp4"
+    ]
+  }
+}

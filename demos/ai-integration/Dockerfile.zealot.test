@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install essential Python packages for testing
+RUN pip install --no-cache-dir pytest requests gitpython
+
+# Set working directory for test files
+WORKDIR /app/demos/ai-integration
+
+# Create workspace directory for repository operations
+RUN mkdir -p /tmp/workspace && chmod 777 /tmp/workspace
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Copy application code from build context (assumed to be repo root)
+COPY . /app
+
+# Default command for integration testing
+CMD ["python", "test-remote-simple.py"]

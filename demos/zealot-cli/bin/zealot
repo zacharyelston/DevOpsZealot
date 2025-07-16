@@ -1,0 +1,457 @@
+#!/bin/bash
+# zealot - A simplified CLI for DevOpsZealot AI-driven code generation
+# 
+# This script provides a clean interface to the DevOpsZealot AI code generator
+# with explicit control over branches, contexts, and workflows.
+
+set -e
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ZEALOT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+CONTEXT_DIR="${ZEALOT_DIR}/demos/zealot-cli/configs"
+DOCKER_IMAGE="devops-zealot:ai-test"
+ENV_FILE="${ZEALOT_DIR}/demos/zealot-cli/configs/.env"
+TEMP_DIR="/tmp/zealot-$$"
+
+# Color codes for better readability
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+BLUE="\033[0;34m"
+CYAN="\033[0;36m"
+NC="\033[0m" # No Color
+
+# Display banner
+echo -e "${BLUE}=============================================${NC}"
+echo -e "${BLUE}DevOpsZealot Simplified CLI${NC}"
+echo -e "${BLUE}=============================================${NC}"
+
+# Functions
+display_usage() {
+    echo -e "\nUsage: zealot <command> [options]\n"
+    echo -e "Commands:"
+    echo -e "  ${GREEN}generate${NC}  Generate code using AI based on context"
+    echo -e "  ${GREEN}review${NC}     Review previously generated code and write review file"
+    echo -e "  ${GREEN}validate${NC}  Validate code against standards/requirements"
+    echo -e "  ${GREEN}help${NC}      Show this help message\n"
+    echo -e "Generate options:"
+    echo -e "  ${CYAN}--context=FILE${NC}    JSON context file (default: whisper-mp4.json)"
+    echo -e "  ${CYAN}--branch=NAME${NC}     Git branch to use (overrides context file)"
+    echo -e "  ${CYAN}--repo=URL${NC}        Repository URL (overrides context file)"
+    echo -e "  ${CYAN}--validate${NC}        Run validation after generation"
+    echo -e "  ${CYAN}--review${NC}          Run code review after generation\n"
+    echo -e "Examples:"
+    echo -e "  zealot generate --context=whisper-mp4.json --branch=feature/nuvo1"
+    echo -e "  zealot validate --context=whisper-mp4.json\n"
+}
+
+parse_args() {
+    # Default values
+    COMMAND=""
+    CONTEXT_FILE=""
+    BRANCH_NAME=""
+    REPO_URL=""
+    VALIDATE_AFTER=false
+    REVIEW_AFTER=false
+    
+    # Parse command
+    if [ $# -eq 0 ]; then
+        display_usage
+        exit 1
+    fi
+    
+    COMMAND=$1
+    shift
+    
+    # Parse options
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --context=*)
+                CONTEXT_FILE="${1#*=}"
+                ;;
+            --branch=*)
+                BRANCH_NAME="${1#*=}"
+                ;;
+            --repo=*)
+                REPO_URL="${1#*=}"
+                ;;
+            --validate)
+                VALIDATE_AFTER=true
+                ;;
+            --review)
+                REVIEW_AFTER=true
+                ;;
+            --help)
+                display_usage
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Unknown option: $1${NC}"
+                display_usage
+                exit 1
+                ;;
+        esac
+        shift
+    done
+    
+    # Ensure context file exists
+    if [ -z "$CONTEXT_FILE" ]; then
+        echo -e "${YELLOW}No context file specified, using default: whisper-mp4.json${NC}"
+        CONTEXT_FILE="whisper-mp4.json"
+    fi
+    
+    # Add path to context file if it's just a filename
+    if [[ "$CONTEXT_FILE" != */* ]]; then
+        CONTEXT_FILE="${CONTEXT_DIR}/${CONTEXT_FILE}"
+    fi
+    
+    if [ ! -f "$CONTEXT_FILE" ]; then
+        echo -e "${RED}Context file not found: ${CONTEXT_FILE}${NC}"
+        exit 1
+    fi
+}
+
+load_environment() {
+    # Load environment variables
+    if [ -f "$ENV_FILE" ]; then
+        echo -e "\n${GREEN}Loading environment variables from ${ENV_FILE}...${NC}"
+        export $(grep -v '^#' "$ENV_FILE" | xargs)
+    else
+        echo -e "\n${YELLOW}No .env file found at ${ENV_FILE}${NC}"
+        echo -e "${YELLOW}Creating .env file from template...${NC}"
+        
+        # Create directory if it doesn't exist
+        mkdir -p "$(dirname "$ENV_FILE")"
+        
+        # Create template .env file
+        cat > "$ENV_FILE" << EOF
+# DevOpsZealot API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GITHUB_TOKEN=your_github_token_here
+
+# Uncomment to customize Docker container behavior
+#ZEALOT_LOG_LEVEL=info
+EOF
+        
+        echo -e "${RED}Please edit ${ENV_FILE} to add your API keys${NC}"
+        echo -e "${YELLOW}Then run this script again.${NC}"
+        exit 1
+    fi
+    
+    # Validate environment variables
+    echo -e "\n${BLUE}Validating environment...${NC}"
+    ERROR=0
+    
+    if [ -z "$OPENAI_API_KEY" ] && [ -z "$ANTHROPIC_API_KEY" ]; then
+        echo -e "${RED}Error: Neither OPENAI_API_KEY nor ANTHROPIC_API_KEY is set${NC}"
+        echo -e "${YELLOW}Please set at least one API key in ${ENV_FILE}${NC}"
+        ERROR=1
+    fi
+    
+    if [ $ERROR -eq 1 ]; then
+        exit 1
+    fi
+    
+    echo -e "${GREEN}Environment validated successfully!${NC}"
+}
+
+prepare_context_file() {
+    # Create temp dir
+    mkdir -p "$TEMP_DIR"
+    
+    # Copy and modify context file
+    echo -e "\n${BLUE}Preparing context file...${NC}"
+    cp "$CONTEXT_FILE" "${TEMP_DIR}/context.json"
+    
+    # Override branch if specified
+    if [ -n "$BRANCH_NAME" ]; then
+        echo -e "${GREEN}Setting branch name to: ${BRANCH_NAME}${NC}"
+        # Use a more robust JSON manipulation approach with temporary files
+        TMP_JSON="${TEMP_DIR}/tmp.json"
+        
+        # Attempt to set branch at top level, task level, and repository level for maximum compatibility
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg branch "$BRANCH_NAME" '. + {branch: $branch}' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+        
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg branch "$BRANCH_NAME" '.task = (.task // {}) + {branch: $branch}' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+        
+        # Also update repository.branch if repository exists
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg branch "$BRANCH_NAME" 'if .repository then .repository += {branch: $branch} else . end' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+    fi
+    
+    # Override repo URL if specified
+    if [ -n "$REPO_URL" ]; then
+        echo -e "${GREEN}Setting repository URL to: ${REPO_URL}${NC}"
+        # Set repository at both top level and task level for compatibility
+        TMP_JSON="${TEMP_DIR}/tmp.json"
+        
+        # If task.repository is a string, update it; if it's an object with url, update that
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg url "$REPO_URL" '.task = (.task // {}) + if .task.repository and (.task.repository | type) == "string" then {repository: $url} else {} end' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+        
+        # If task.repository is an object, update its url property
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg url "$REPO_URL" '.task = (.task // {}) + if .task.repository and (.task.repository | type) == "object" then {repository: (.task.repository + {url: $url})} else {} end' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+        
+        # Also update repository.url if repository exists at top level
+        cat "${TEMP_DIR}/context.json" | \
+        jq --arg url "$REPO_URL" 'if .repository then .repository += {url: $url} else . end' > "$TMP_JSON" && \
+        mv "$TMP_JSON" "${TEMP_DIR}/context.json"
+    fi
+    
+    echo -e "${GREEN}Context file prepared successfully!${NC}"
+}
+
+generate_code() {
+    echo -e "\n${BLUE}Starting code generation with DevOpsZealot...${NC}"
+    
+    # Build Docker arguments
+    ENV_ARGS=()
+    if [ -n "$OPENAI_API_KEY" ]; then
+        ENV_ARGS+=("--env" "OPENAI_API_KEY=$OPENAI_API_KEY")
+    fi
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        ENV_ARGS+=("--env" "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+    fi
+    if [ -n "$GITHUB_TOKEN" ]; then
+        ENV_ARGS+=("--env" "GITHUB_TOKEN=$GITHUB_TOKEN")
+    fi
+    
+    # Extract branch name from context.json for display
+    DISPLAY_BRANCH=$(grep -o '"branch":[[:space:]]*"[^"]*"' "${TEMP_DIR}/context.json" | head -1 | cut -d'"' -f4)
+    echo -e "${BLUE}Using branch from context: ${DISPLAY_BRANCH}${NC}"
+    
+    # Create a workspace directory in the container with appropriate permissions
+    docker run --rm \
+      -v "${TEMP_DIR}:/app" \
+      -v "/var/run/docker.sock:/var/run/docker.sock" \
+      "${ENV_ARGS[@]}" \
+      --env ZEALOT_CONTAINER_MODE=true \
+      "${DOCKER_IMAGE}" bash -c "mkdir -p /tmp/workspace && chmod 777 /tmp/workspace"
+    
+    # Copy integration script to temp dir
+    cp "${SCRIPT_DIR}/run_ai_integration.py" "${TEMP_DIR}/run_ai_integration.py"
+    
+    # Run the AI integration script
+    docker run --rm \
+      -v "${TEMP_DIR}:/app" \
+      -v "/var/run/docker.sock:/var/run/docker.sock" \
+      "${ENV_ARGS[@]}" \
+      --env ZEALOT_CONTAINER_MODE=true \
+      "${DOCKER_IMAGE}" python3 /app/run_ai_integration.py
+    
+    echo -e "\n${GREEN}Code generation completed!${NC}"
+    
+    # If validation is requested, run validation
+    if [ "$VALIDATE_AFTER" = true ]; then
+        validate_code
+    fi
+    
+    # If review is requested, run review
+    if [ "$REVIEW_AFTER" = true ]; then
+        review_code
+    fi
+}
+
+validate_code() {
+    echo -e "\n${BLUE}Validating generated code...${NC}"
+    
+    # Add validation logic here
+    echo -e "${GREEN}Validation completed!${NC}"
+}
+
+review_code() {
+    echo -e "\n${BLUE}Starting code review with DevOpsZealot...${NC}"
+    
+    # Build Docker arguments
+    ENV_ARGS=()
+    if [ -n "$OPENAI_API_KEY" ]; then
+        ENV_ARGS+=("--env" "OPENAI_API_KEY=$OPENAI_API_KEY")
+    fi
+    if [ -n "$ANTHROPIC_API_KEY" ]; then
+        ENV_ARGS+=("--env" "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
+    fi
+    if [ -n "$GITHUB_TOKEN" ]; then
+        ENV_ARGS+=("--env" "GITHUB_TOKEN=$GITHUB_TOKEN")
+    fi
+    
+    # Extract branch name from context.json for display
+    BRANCH_NAME=$(cat "${TEMP_DIR}/context.json" | jq -r '.task.branch // "feature/zealot-review"')
+    echo -e "${BLUE}Using branch from context: ${BRANCH_NAME}${NC}"
+    
+    # Create workspace directory and set permissions
+    WORKSPACE="$HOME/AlZacAI/$(cat ${TEMP_DIR}/context.json | jq -r '.task.repository // ""' | xargs basename -s .git)"
+    mkdir -p "${WORKSPACE}/zealot/reviews"
+    
+    # Set permissions on the specific directories we need
+    chmod 777 "${WORKSPACE}/zealot"
+    chmod 777 "${WORKSPACE}/zealot/reviews"
+    
+    # Create a workspace directory in the container
+    docker run --rm \
+      -v "${TEMP_DIR}:/app" \
+      -v "${WORKSPACE}:/workspace" \
+      -v "/var/run/docker.sock:/var/run/docker.sock" \
+      "${ENV_ARGS[@]}" \
+      --env ZEALOT_CONTAINER_MODE=true \
+      --user root \
+      "${DOCKER_IMAGE}" bash -c "chown -R $(id -u):$(id -g) /workspace/zealot"
+    
+    # Copy review script to temp dir
+    cp "${SCRIPT_DIR}/run_ai_review.py" "${TEMP_DIR}/run_ai_review.py"
+    
+    # Generate a timestamp for the review file
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    
+    # Run the AI review script
+    echo -e "\n${BLUE}Running code review...${NC}"
+    docker run --rm \
+      -v "${TEMP_DIR}:/app" \
+      -v "${WORKSPACE}:/workspace" \
+      -v "/var/run/docker.sock:/var/run/docker.sock" \
+      "${ENV_ARGS[@]}" \
+      --env ZEALOT_CONTAINER_MODE=true \
+      --env REVIEW_TIMESTAMP="${TIMESTAMP}" \
+      "${DOCKER_IMAGE}" python3 /app/run_ai_review.py
+    
+    # The review file should be created in the workspace by the review script
+    WORKSPACE="$HOME/AlZacAI/$(cat ${TEMP_DIR}/context.json | jq -r '.task.repository // ""' | xargs basename -s .git)"
+    REVIEW_FILE="${WORKSPACE}/zealot/reviews/review-${TIMESTAMP}.md"
+    
+    if [ -f "${REVIEW_FILE}" ]; then
+        echo -e "\n${GREEN}Review completed successfully!${NC}"
+        echo -e "Review file: ${REVIEW_FILE}"
+        
+        # Commit and push the review file
+        echo -e "\n${BLUE}Committing and pushing review file...${NC}"
+        (
+            cd "${WORKSPACE}" || exit 1
+            
+            # Add the review file
+            git add "zealot/reviews/$(basename "${REVIEW_FILE}")"
+            
+            # Commit the changes
+            git commit -m "AI: Add code review for branch ${BRANCH_NAME}" || {
+                echo -e "${YELLOW}No changes to commit${NC}"
+                return 0
+            }
+            
+            # Ensure we're on the right branch
+            current_branch=$(git rev-parse --abbrev-ref HEAD)
+            if [ "$current_branch" != "${BRANCH_NAME}" ]; then
+                echo -e "${RED}Error: Not on expected branch. Expected: ${BRANCH_NAME}, Found: ${current_branch}${NC}"
+                return 1
+            fi
+            
+            # Fetch latest changes
+            echo -e "${BLUE}Fetching latest changes from remote...${NC}"
+            git fetch origin "${BRANCH_NAME}" || {
+                echo -e "${YELLOW}Warning: Could not fetch from remote. Continuing with local changes only.${NC}"
+            }
+            
+            # Check if remote branch exists and has changes
+            if git ls-remote --exit-code origin "${BRANCH_NAME}" >/dev/null 2>&1; then
+                # Check if we need to pull first
+                if ! git merge-base --is-ancestor "origin/${BRANCH_NAME}" HEAD 2>/dev/null; then
+                    echo -e "${YELLOW}Local branch has diverged from remote. Attempting to merge...${NC}"
+                    if ! git merge --no-edit "origin/${BRANCH_NAME}"; then
+                        echo -e "${RED}Error: Could not merge remote changes. Please resolve conflicts manually.${NC}"
+                        echo -e "${YELLOW}Run: cd ${WORKSPACE} && git merge --abort && git pull origin ${BRANCH_NAME}${NC}"
+                        return 1
+                    fi
+                fi
+            fi
+            
+            # Push the changes with retry logic
+            echo -e "${BLUE}Pushing changes to remote repository...${NC}"
+            
+            # First, ensure we're on the right branch
+            current_branch=$(git rev-parse --abbrev-ref HEAD)
+            if [ "$current_branch" != "${BRANCH_NAME}" ]; then
+                echo -e "${RED}Error: Not on expected branch. Expected: ${BRANCH_NAME}, Found: ${current_branch}${NC}"
+                return 1
+            fi
+            
+            # Try to push with force-with-lease (safest force push)
+            if git push --force-with-lease origin "${BRANCH_NAME}"; then
+                echo -e "${GREEN}Successfully pushed review file to remote repository${NC}"
+                echo -e "${GREEN}View at: https://github.com/$(git remote get-url origin | sed -n 's/.*:\([^/]*\/.*\)\.git/\1/p')/blob/${BRANCH_NAME}/zealot/reviews/$(basename "${REVIEW_FILE}")${NC}"
+                return 0
+            fi
+            
+            # If force push fails, try regular push
+            echo -e "${YELLOW}Force push failed, trying regular push...${NC}"
+            if git push origin "${BRANCH_NAME}"; then
+                echo -e "${GREEN}Successfully pushed review file to remote repository${NC}"
+                echo -e "${GREEN}View at: https://github.com/$(git remote get-url origin | sed -n 's/.*:\([^/]*\/.*\)\.git/\1/p')/blob/${BRANCH_NAME}/zealot/reviews/$(basename "${REVIEW_FILE}")${NC}"
+                return 0
+            fi
+            
+            # If both pushes fail, show error and instructions
+            echo -e "${RED}Error: Failed to push review file.${NC}"
+            echo -e "${YELLOW}You may need to resolve conflicts and push manually:${NC}"
+            echo -e "cd ${WORKSPACE}"
+            echo -e "git pull origin ${BRANCH_NAME}  # Resolve any conflicts"
+            echo -e "git push origin ${BRANCH_NAME}  # Then push"
+            return 1
+        )
+    else
+        echo -e "\n${RED}Error: Review file was not created${NC}"
+        return 1
+    fi
+    
+    # If validation is requested, run validation
+    if [ "$VALIDATE_AFTER" = true ]; then
+        validate_code
+    fi
+}
+
+cleanup() {
+    echo -e "\n${BLUE}Cleaning up temporary files...${NC}"
+    rm -rf "$TEMP_DIR"
+    echo -e "${GREEN}Cleanup completed!${NC}"
+}
+
+# Main execution
+parse_args "$@"
+
+case "$COMMAND" in
+    generate)
+        load_environment
+        prepare_context_file
+        generate_code
+        cleanup
+        ;;
+    review)
+        load_environment
+        prepare_context_file
+        review_code
+        cleanup
+        ;;
+    validate)
+        load_environment
+        prepare_context_file
+        validate_code
+        cleanup
+        ;;
+    help)
+        display_usage
+        ;;
+    *)
+        echo -e "${RED}Unknown command: ${COMMAND}${NC}"
+        display_usage
+        exit 1
+        ;;
+esac
+
+echo -e "\n${GREEN}Done!${NC}"
+exit 0

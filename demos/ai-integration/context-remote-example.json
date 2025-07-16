@@ -1,0 +1,29 @@
+{
+  "task": {
+    "type": "script_improvement",
+    "repository": "https://github.com/zacharyelston/transcribe-demo.git",
+    "branch": "feature/script-improvements",
+    "files": [
+      "transcribe_video.sh",
+      "extract_audio_for_macwhisper.sh",
+      "lib/utils.sh",
+      "config/default.conf"
+    ],
+    "requirements": [
+      "Add support for multiple output formats (srt, vtt, text) in transcribe_video.sh",
+      "Improve error handling in both scripts with proper error codes",
+      "Add a batch processing mode to handle multiple files at once",
+      "Add optional timestamp generation in transcripts",
+      "Implement logging to a log file in the lib/utils.sh module",
+      "Add support for customizable audio quality settings"
+    ],
+    "validation_rules": [
+      "shellcheck",
+      "script_execution_test"
+    ]
+  },
+  "config": {
+    "ai_model": "gpt-4",
+    "verbose_logging": true
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "task": {
+    "type": "script_improvement",
+    "repository": "https://github.com/zacharyelston/transcribe-demo",
+    "branch": "feature/whisper-cli-subtasks",
+    "files": [
+      "extract_audio.sh"
+    ],
+    "requirements": [
+      "File 'extract_audio_for_macwhisper.sh' has been successfully renamed to 'extract_audio.sh'", 
+      "Ensure the file 'extract_audio.sh' ends with a newline character (POSIX requirement)"
+    ],
+    "validation_rules": [
+      "filename_consistency_check",
+      "posix_newline_check"
+    ],
+    "output_examples": [
+      {
+        "name": "File Renaming Example",
+        "description": "Example of how to rename a file in a Git repository",
+        "content": "# To rename a file in Git:\ngit mv old_filename.sh new_filename.sh\n\n# This ensures Git tracks the rename operation properly\n# rather than seeing it as a file deletion and creation"
+      },
+      {
+        "name": "POSIX Newline Check",
+        "description": "Script to check if files end with a newline character",
+        "content": "# Check if a file ends with a newline\ncheck_newline() {\n  if [ -n \"$(tail -c1 \"$1\")\" ]; then\n    echo \"File $1 is missing a newline at the end\"\n    return 1\n  fi\n  return 0\n}\n\n# Ensure the file ends with a newline\nensure_newline() {\n  if [ -n \"$(tail -c1 \"$1\")\" ]; then\n    echo >> \"$1\"\n    echo \"Added newline to $1\"\n  fi\n}"
+      }
+    ]
+  },
+  "config": {
+    "ai_model": "gpt-4",
+    "verbose_logging": true,
+    "git_config": {
+      "validate_before_api_call": true,
+      "user": {
+        "name": "DevOps Zealot",
+        "email": "zealot@example.com"
+      }
+    }
+  }
+}

@@ -89,19 +89,20 @@ cp "${SCRIPT_DIR}/ai_file_editor.py" "${TEMP_DIR}/"
 cp "${SCRIPT_DIR}/validators.py" "${TEMP_DIR}/"
 cp "${CONTEXT_FILE}" "${TEMP_DIR}/context.json"
 
-# 2. Create a runner script for the Docker container
+# 2. Create a runner script for the Docker container that supports remote repositories
 cat > "${TEMP_DIR}/run_ai_integration.py" << 'EOF'
 #!/usr/bin/env python3
 """
-Docker container entrypoint for AI integration demo
+Docker container entrypoint for AI integration demo with remote repository support
 """
 import os
 import sys
 import logging
-import subprocess
+import json
+import shutil
 from pathlib import Path
-
-# Import our modules
+import subprocess
+import traceback
 from ai_file_editor import AIFileEditor
 import validators
 
@@ -119,9 +120,61 @@ def main():
     """Main entrypoint"""
     logger.info("Starting DevOpsZealot AI Integration Demo")
     
-    # Configuration
-    target_repo = Path('/target')
+    # Load context file to get repository URL and branch name
     context_file = Path('/app/context.json')
+    with open(context_file) as f:
+        context = json.load(f)
+        
+    # Get repository URL and branch name
+    repo_url = context.get('task', {}).get('repository', '')
+    # Try to get branch from top-level first, then task level, then default
+    branch_name = context.get('branch') or context.get('task', {}).get('branch') or context.get('repository', {}).get('branch', 'feature/nuvo1')
+    
+    # Determine if it's a remote or local repository
+    is_remote_repo = repo_url.startswith('http') or repo_url.startswith('git@')
+    
+    if is_remote_repo:
+        # Set up Git credentials with GITHUB_TOKEN if available
+        github_token = os.environ.get('GITHUB_TOKEN')
+        if github_token:
+            logger.info("Setting up Git credentials with GITHUB_TOKEN")
+            # Convert https://github.com/user/repo to https://TOKEN@github.com/user/repo
+            if repo_url.startswith('https://github.com'):
+                auth_repo_url = repo_url.replace('https://github.com', f'https://{github_token}@github.com')
+            else:
+                auth_repo_url = repo_url  # Keep as is for SSH URLs
+        else:
+            logger.warning("GITHUB_TOKEN not set. May have issues with private repositories.")
+            auth_repo_url = repo_url
+        
+        # Clone the repository
+        target_repo = Path('/tmp/workspace')
+        if target_repo.exists():
+            logger.info(f"Cleaning workspace directory: {target_repo}")
+            shutil.rmtree(target_repo)
+        
+        target_repo.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"Cloning repository: {repo_url} (auth URL redacted)")
+        try:
+            # Use subprocess instead of GitPython for initial clone to support auth
+            subprocess.run(
+                ['git', 'clone', auth_repo_url, str(target_repo)],
+                check=True,
+                stderr=subprocess.PIPE,  # Capture stderr to prevent token exposure in logs
+                stdout=subprocess.PIPE
+            )
+            logger.info("Repository cloned successfully")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to clone repository: {e}")
+            return 1
+    else:
+        # Local repository case (mounted at /target)
+        target_repo = Path('/target')
+        if not target_repo.exists() or not (target_repo / '.git').exists():
+            logger.error(f"Target directory {target_repo} is not a valid Git repository")
+            return 1
+        logger.info(f"Using local repository: {target_repo}")
     
     # Determine API to use
     api_type = 'openai'
@@ -139,14 +192,21 @@ def main():
     logger.info(f"Using API: {api_type} with model: {model}")
     
     # Create a branch for our changes
-    branch_name = f"ai-improvements-{os.environ.get('HOSTNAME', 'docker')}"
     logger.info(f"Creating branch: {branch_name}")
-    
-    subprocess.run(
-        ['git', 'checkout', '-b', branch_name],
-        cwd=target_repo,
-        check=True
-    )
+    try:
+        subprocess.run(
+            ['git', 'checkout', '-b', branch_name],
+            cwd=target_repo,
+            check=True
+        )
+    except subprocess.CalledProcessError:
+        # Branch might already exist, try to check it out
+        logger.warning(f"Branch {branch_name} might already exist, trying to check it out")
+        subprocess.run(
+            ['git', 'checkout', branch_name],
+            cwd=target_repo,
+            check=True
+        )
     
     # Initialize AI File Editor
     try:
@@ -178,7 +238,6 @@ def main():
         modified_files = [target_repo / f for f in result.stdout.strip().split('\n') if f]
         
         # Get validation rules from context
-        import json
         with open(context_file) as f:
             context = json.load(f)
         
@@ -191,7 +250,6 @@ def main():
             logger.info("All validations passed!")
         else:
             logger.error("Some validations failed:")
-            import json
             print(json.dumps(results, indent=2))
             return 1
         
@@ -246,9 +304,21 @@ for arg in "${ENV_ARGS[@]}"; do
 done
 
 # 3. Run the Docker container
-echo -e "\n${BLUE}Starting container with target repo: ${DEMO_REPO_DIR}${NC}"
+# Extract branch name from context.json for display
+BRANCH_NAME=$(grep -o '"branch": "[^"]*"' "${TEMP_DIR}/context.json" | cut -d'"' -f4)
+echo -e "\n${BLUE}Starting container with context file using remote repo${NC}"
+echo -e "${BLUE}Using branch from context.json: ${BRANCH_NAME}${NC}"
+
+# Create a workspace directory in the container with appropriate permissions
 docker run --rm \
-  -v "${DEMO_REPO_DIR}:/target" \
+  -v "${TEMP_DIR}:/app" \
+  -v "/var/run/docker.sock:/var/run/docker.sock" \
+  "${ENV_ARGS[@]}" \
+  --env ZEALOT_CONTAINER_MODE=true \
+  "${IMAGE_NAME}" bash -c "mkdir -p /tmp/workspace && chmod 777 /tmp/workspace"
+
+# Run the AI integration script
+docker run --rm \
   -v "${TEMP_DIR}:/app" \
   -v "/var/run/docker.sock:/var/run/docker.sock" \
   "${ENV_ARGS[@]}" \
@@ -266,18 +336,21 @@ if [ $EXIT_CODE -eq 0 ]; then
   echo -e "\n${GREEN}=============================================${NC}"
   echo -e "${GREEN}AI Integration Demo completed successfully!${NC}"
   echo -e "${GREEN}=============================================${NC}"
-  echo -e "\n${YELLOW}Modified files in: ${DEMO_REPO_DIR}${NC}"
-  (cd "${DEMO_REPO_DIR}" && git status)
+  echo -e "\n${YELLOW}Changes have been made to the remote repository${NC}"
+  echo -e "${YELLOW}Branch: ${BRANCH_NAME}${NC}"
   
-  echo -e "\n${BLUE}To see detailed changes:${NC}"
-  echo -e "  cd ${DEMO_REPO_DIR} && git diff HEAD~1"
+  echo -e "\n${BLUE}To create a pull request for these changes:${NC}"
+  echo -e "  Visit the repository's GitHub page and create a PR for branch '${BRANCH_NAME}'"
   
-  echo -e "\n${BLUE}To push the changes:${NC}"
-  echo -e "  cd ${DEMO_REPO_DIR} && git push origin \$(git branch --show-current)"
+  # Extract repository URL from context.json
+  REPO_URL=$(grep -o '"repository": "[^"]*"' "${TEMP_DIR}/context.json" | cut -d'"' -f4)
+  if [[ $REPO_URL == https://github.com/* ]]; then
+    PR_URL="${REPO_URL%.git}/compare/${BRANCH_NAME}?expand=1"
+    echo -e "${BLUE}PR URL: ${PR_URL}${NC}"
+  fi
 else
   echo -e "\n${RED}=============================================${NC}"
   echo -e "${RED}AI Integration Demo failed with exit code ${EXIT_CODE}!${NC}"
   echo -e "${RED}=============================================${NC}"
-  echo -e "\n${YELLOW}To reset the repository:${NC}"
-  echo -e "  cd ${DEMO_REPO_DIR} && git checkout master && git branch -D \$(git branch --show-current)"
+  echo -e "${RED}Check the logs above for detailed error messages.${NC}"
 fi

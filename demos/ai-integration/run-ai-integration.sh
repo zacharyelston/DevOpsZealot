@@ -18,7 +18,22 @@ ZEALOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 DEMO_REPO_DIR="/Users/zacelston/AlZacAI/transcribe-demo"
 CONTEXT_FILE="${SCRIPT_DIR}/context.json"
 ENV_FILE="${SCRIPT_DIR}/.env"
-BRANCH_NAME="ai-improvements-$(date +%Y%m%d-%H%M%S)"
+
+# Read branch name from context file if available, otherwise use a timestamp-based name
+if [ -f "$CONTEXT_FILE" ]; then
+  # Try reading branch from different possible locations in the JSON
+  BRANCH_FROM_JSON=$(grep -o '"branch":\s*"[^"]*"' "$CONTEXT_FILE" | head -1 | cut -d '"' -f4)
+  if [ -n "$BRANCH_FROM_JSON" ]; then
+    BRANCH_NAME="$BRANCH_FROM_JSON"
+    echo -e "${GREEN}Using branch name from context file: ${BRANCH_NAME}${NC}"
+  else
+    BRANCH_NAME="ai-improvements-$(date +%Y%m%d-%H%M%S)"
+    echo -e "${YELLOW}No branch name found in context file. Using generated name: ${BRANCH_NAME}${NC}"
+  fi
+else
+  BRANCH_NAME="ai-improvements-$(date +%Y%m%d-%H%M%S)"
+  echo -e "${YELLOW}No context file found. Using generated name: ${BRANCH_NAME}${NC}"
+fi
 
 # Display banner
 echo -e "${BLUE}=============================================${NC}"

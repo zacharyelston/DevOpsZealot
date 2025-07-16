@@ -1,0 +1,56 @@
+{
+  "task": {
+    "type": "script_improvement",
+    "repository": "https://github.com/zacharyelston/transcribe-demo",
+    "branch": "feature/whisper-cli-integration",
+    "files": [
+      "transcribe_video.sh",
+      "extract_audio_for_macwhisper.sh",
+      "lib/utils.sh",
+      "config/default.conf"
+    ],
+    "requirements": [
+      "Replace MacWhisper with direct Whisper CLI integration",
+      "Ensure proper error handling for the whisper CLI command",
+      "Update config file to support whisper CLI parameters",
+      "Ensure all shell scripts end with a newline character (POSIX requirement)",
+      "Rename 'extract_audio_for_macwhisper.sh' to 'extract_audio.sh' to reflect the new Whisper CLI integration",
+      "Make the Whisper CLI path handling consistent between config and code"
+    ],
+    "validation_rules": [
+      "shellcheck",
+      "script_execution_test",
+      "posix_newline_check",
+      "filename_consistency_check",
+      "path_consistency_check"
+    ],
+    "output_examples": [
+      {
+        "name": "Whisper CLI Command Example",
+        "description": "Example command for using Whisper CLI",
+        "content": "whisper --language English --model medium --output_dir ./output --output_format txt ./input_audio.wav"
+      },
+      {
+        "name": "POSIX Newline Check",
+        "description": "Script to check if files end with a newline character",
+        "content": "# Check if a file ends with a newline\ncheck_newline() {\n  if [ -n \"$(tail -c1 \"$1\")\" ]; then\n    echo \"File $1 is missing a newline at the end\"\n    return 1\n  fi\n  return 0\n}\n\n# Ensure the file ends with a newline\nensure_newline() {\n  if [ -n \"$(tail -c1 \"$1\")\" ]; then\n    echo >> \"$1\"\n    echo \"Added newline to $1\"\n  fi\n}"
+      },
+      {
+        "name": "Path Consistency Check",
+        "description": "Example of handling Whisper CLI path consistently",
+        "content": "# Check if Whisper CLI is available\ncheck_whisper_cli() {\n  if [ -x \"${WHISPER_CLI_PATH}\" ]; then\n    return 0\n  elif command -v whisper >/dev/null 2>&1; then\n    # If found in PATH, update the config variable\n    WHISPER_CLI_PATH=$(command -v whisper)\n    return 0\n  else\n    echo \"Error: Whisper CLI not found at ${WHISPER_CLI_PATH} or in PATH\" >&2\n    return 1\n  fi\n}"
+      }
+    ]
+  },
+  "config": {
+    "ai_model": "gpt-4",
+    "verbose_logging": true,
+    "git_config": {
+      "validate_before_api_call": true,
+      "user": {
+        "name": "DevOps Zealot",
+        "email": "zealot@example.com"
+      }
+    }
+  }
+}

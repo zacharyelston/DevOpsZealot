@@ -1,0 +1,54 @@
+name: Remote Repository Integration Tests
+
+on:
+  push:
+    branches:
+      - feature/remote-repo-support
+      - main
+  pull_request:
+    branches: 
+      - main
+
+jobs:
+  test-remote-repo-integration:
+    name: Test Remote Repository Integration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      
+      - name: Run simplified remote repository test
+        env:
+          # Uses the built-in GITHUB_TOKEN for authentication
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd demos/ai-integration
+          python test-remote-simple.py
+      
+      - name: Test Docker build
+        run: |
+          cd demos/ai-integration
+          docker build -f Dockerfile.zealot.test -t devops-zealot:ai-test .
+      
+      - name: Verify GitHub authentication
+        run: |
+          echo "Testing GitHub API authentication"
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | grep login
+      
+      - name: Test context file validation
+        run: |
+          cd demos/ai-integration
+          echo "Validating context file format"
+          python -c "import json; f = open('context-remote-example.json'); json.load(f); f.close(); print('✓ Valid JSON')"
