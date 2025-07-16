@@ -20,7 +20,7 @@ from .adapters.base import (
     ContainerAdapter
 )
 from .task_queue import TaskQueue
-from .config import UniversalConfig
+from .universal_config import UniversalConfig
 
 logger = structlog.get_logger()
 
@@ -84,17 +84,49 @@ class UniversalZealotEngine:
     
     def _load_adapter(self, adapter_type: str, config: Dict[str, Any]) -> Any:
         """Dynamically load adapter based on configuration"""
-        adapter_class_name = config.get('type', 'mock').capitalize() + adapter_type.capitalize() + 'Adapter'
+        adapter_name = config.get('type', 'mock')
         
-        # Import adapter module dynamically
-        try:
-            module = __import__(f'zealot.adapters.{adapter_type}', fromlist=[adapter_class_name])
-            adapter_class = getattr(module, adapter_class_name)
-            return adapter_class(config)
-        except (ImportError, AttributeError) as e:
-            logger.warning(f"Could not load adapter {adapter_class_name}, using mock", error=str(e))
-            from .adapters.mock import MockAdapter
-            return MockAdapter(config)
+        # Special handling for different adapter types
+        if adapter_type == 'issue':
+            if adapter_name == 'redmine':
+                from .adapters.issue import RedmineIssueAdapter
+                return RedmineIssueAdapter(config)
+            elif adapter_name == 'mock':
+                from .adapters.mock import MockIssueAdapter
+                return MockIssueAdapter(config)
+        elif adapter_type == 'vcs':
+            if adapter_name == 'git':
+                from .adapters.vcs import GitVcsAdapter
+                return GitVcsAdapter(config)
+            elif adapter_name == 'mock':
+                from .adapters.mock import MockVCSAdapter
+                return MockVCSAdapter(config)
+        elif adapter_type == 'llm':
+            if adapter_name == 'mock':
+                from .adapters.mock import MockLLMAdapter
+                return MockLLMAdapter(config)
+            # Add other LLM adapters here (openai, anthropic, etc.)
+        elif adapter_type == 'container':
+            if adapter_name == 'mock':
+                from .adapters.mock import MockContainerAdapter
+                return MockContainerAdapter(config)
+            # Add other container adapters here (docker, kubernetes, etc.)
+        
+        # Default to mock adapter if not found
+        logger.warning(f"Unknown adapter type '{adapter_name}' for {adapter_type}, using mock")
+        from .adapters.mock import (
+            MockIssueAdapter, MockVCSAdapter, 
+            MockLLMAdapter, MockContainerAdapter
+        )
+        
+        mock_classes = {
+            'issue': MockIssueAdapter,
+            'vcs': MockVCSAdapter,
+            'llm': MockLLMAdapter,
+            'container': MockContainerAdapter
+        }
+        
+        return mock_classes[adapter_type](config)
     
     async def execute(self, task: UniversalTask) -> UniversalResult:
         """Execute a universal task"""
