@@ -1,0 +1,130 @@
+# Example Zealot Universal Configuration
+# This demonstrates how to configure adapters for different systems
+
+# Server configuration
+server_host: "0.0.0.0"
+server_port: 8090
+server_workers: 4
+log_level: "INFO"
+log_format: "json"
+
+# Directories
+workflows_dir: "./workflows"
+plugins_dir: "./plugins"
+
+# Optional Redis for task queue
+redis_url: "redis://localhost:6379/0"
+
+# Issue tracking adapter configuration
+issue_source:
+  # Redmine example
+  type: "redmine"
+  endpoint: "https://redmine.example.com"
+  api_key: "${REDMINE_API_KEY}"
+  default_project: "devops"
+  
+  # Alternative: Jira
+  # type: "jira"
+  # endpoint: "https://your-domain.atlassian.net"
+  # email: "zealot@example.com"
+  # api_token: "${JIRA_API_TOKEN}"
+  # default_project: "DEVOPS"
+  
+  # Alternative: GitHub Issues
+  # type: "github"
+  # token: "${GITHUB_TOKEN}"
+  # default_repo: "owner/repo"
+
+# Version Control System adapter
+vcs:
+  # Git configuration
+  type: "git"
+  remote: "origin"
+  default_branch: "main"
+  branch_pattern: "feature/{issue_id}-{slug}"
+  auth_token: "${GIT_AUTH_TOKEN}"
+  user_name: "DevOps Zealot"
+  user_email: "zealot@example.com"
+  
+  # Alternative: GitLab
+  # type: "gitlab"
+  # endpoint: "https://gitlab.example.com"
+  # token: "${GITLAB_TOKEN}"
+  # default_branch: "main"
+  
+  # Alternative: Bitbucket
+  # type: "bitbucket"
+  # workspace: "myworkspace"
+  # token: "${BITBUCKET_TOKEN}"
+
+# Language Model adapter
+llm:
+  # OpenAI example
+  provider: "openai"
+  api_key: "${OPENAI_API_KEY}"
+  model: "gpt-4"
+  temperature: 0.3
+  max_tokens: 4000
+  timeout: 60
+  
+  # Alternative: Anthropic Claude
+  # provider: "anthropic"
+  # api_key: "${ANTHROPIC_API_KEY}"
+  # model: "claude-3-opus-20240229"
+  # temperature: 0.3
+  # max_tokens: 4000
+  
+  # Alternative: Local Ollama
+  # provider: "ollama"
+  # endpoint: "http://localhost:11434"
+  # model: "codellama:34b"
+  # temperature: 0.3
+  
+  # Alternative: Azure OpenAI
+  # provider: "azure_openai"
+  # endpoint: "${AZURE_OPENAI_ENDPOINT}"
+  # api_key: "${AZURE_OPENAI_KEY}"
+  # deployment_name: "gpt-4"
+  # api_version: "2024-02-15-preview"
+
+# Container/Workspace adapter
+container:
+  # Docker example
+  type: "docker"
+  socket: "/var/run/docker.sock"
+  memory_limit: "2g"
+  cpu_quota: 50000
+  timeout: 300
+  base_image: "python:3.11-slim"
+  
+  # Alternative: Kubernetes Jobs
+  # type: "kubernetes"
+  # namespace: "zealot-workspaces"
+  # service_account: "zealot"
+  # image: "zealot/workspace:latest"
+  # resources:
+  #   requests:
+  #     memory: "1Gi"
+  #     cpu: "500m"
+  #   limits:
+  #     memory: "2Gi"
+  #     cpu: "1000m"
+  
+  # Alternative: Local filesystem (for development)
+  # type: "local"
+  # workspace_dir: "/tmp/zealot-workspaces"
+  # cleanup: true
+
+# Security settings
+allowed_repositories:
+  - "https://github.com/myorg/*"
+  - "https://gitlab.company.com/devops/*"
+
+api_key_header: "X-API-Key"
+require_api_key: true
+
+# Environment-specific overrides
+# Production example:
+# server_workers: 16
+# log_level: "WARNING"
+# redis_url: "redis://redis-cluster:6379/0"

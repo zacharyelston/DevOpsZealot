@@ -1,0 +1,261 @@
+# Example workflow configuration for DevOpsZealot Universal Architecture
+# This file demonstrates how to configure workflows without hardcoding
+
+workflows:
+  # Default workflow for any task without specific match
+  - name: default
+    description: Default workflow for general code editing tasks
+    context_template: |
+      Task: Edit the following file according to the requirements
+      
+      File: {file_path}
+      Current content:
+      {current_content}
+      
+      Requirements from issue:
+      Title: {issue_title}
+      Description: {issue_description}
+      
+      Please make the necessary changes to fulfill these requirements.
+      Maintain code style and add appropriate comments.
+    
+    pre_edit:
+      - name: syntax_check
+        hooks:
+          - name: validate_syntax
+            command: "echo 'Pre-edit validation'"
+            timeout: 60
+    
+    post_edit:
+      - name: format_code
+        hooks:
+          - name: auto_format
+            command: "echo 'Post-edit formatting'"
+            timeout: 60
+    
+    validation:
+      - name: final_check
+        hooks:
+          - name: validate_changes
+            command: "echo 'Validating changes'"
+            timeout: 120
+    
+    llm_config:
+      temperature: 0.3
+      max_tokens: 4000
+
+  # Terraform-specific workflow
+  - name: terraform_workflow
+    description: Workflow for Terraform infrastructure files
+    match:
+      labels: ["infrastructure", "terraform"]
+      file_patterns: ["*.tf", "*.tfvars"]
+    
+    context_template: |
+      You are editing Terraform infrastructure code.
+      
+      File: {file_path}
+      Current configuration:
+      {current_content}
+      
+      Requirements:
+      {issue_description}
+      
+      Guidelines:
+      - Follow Terraform best practices
+      - Use consistent resource naming
+      - Add descriptions to all variables
+      - Include appropriate tags
+      - Ensure state compatibility
+      
+      Make the necessary changes to implement the requirements.
+    
+    pre_edit:
+      - name: terraform_init
+        hooks:
+          - name: init
+            command: "terraform init -backend=false"
+            timeout: 300
+          - name: format_check
+            command: "terraform fmt -check"
+            timeout: 60
+            continue_on_failure: true
+    
+    post_edit:
+      - name: terraform_validate
+        hooks:
+          - name: format
+            command: "terraform fmt"
+            timeout: 60
+          - name: validate
+            command: "terraform validate"
+            timeout: 120
+    
+    validation:
+      - name: terraform_plan
+        hooks:
+          - name: plan
+            command: "terraform plan -input=false"
+            timeout: 300
+          - name: security_scan
+            command: "tfsec . --no-color"
+            timeout: 180
+            continue_on_failure: true
+    
+    llm_config:
+      temperature: 0.2
+      max_tokens: 6000
+      model_preference: "gpt-4"
+
+  # Python workflow
+  - name: python_workflow
+    description: Workflow for Python code files
+    match:
+      file_patterns: ["*.py"]
+      metadata_filters:
+        language: "python"
+    
+    context_template: |
+      You are editing Python code.
+      
+      File: {file_path}
+      Current code:
+      {current_content}
+      
+      Requirements:
+      {issue_description}
+      
+      Guidelines:
+      - Follow PEP 8 style guide
+      - Add type hints where appropriate
+      - Include docstrings for functions and classes
+      - Write clean, maintainable code
+      - Consider error handling
+      
+      Implement the requested changes.
+    
+    pre_edit:
+      - name: dependency_check
+        hooks:
+          - name: check_deps
+            command: "pip list"
+            timeout: 60
+    
+    post_edit:
+      - name: python_quality
+        hooks:
+          - name: format
+            command: "black {file_path} --check"
+            timeout: 60
+            continue_on_failure: true
+          - name: lint
+            command: "pylint {file_path}"
+            timeout: 120
+            continue_on_failure: true
+          - name: type_check
+            command: "mypy {file_path}"
+            timeout: 120
+            continue_on_failure: true
+    
+    validation:
+      - name: python_test
+        hooks:
+          - name: unit_test
+            command: "python -m pytest tests/"
+            timeout: 300
+            continue_on_failure: true
+          - name: security_check
+            command: "bandit -r {file_path}"
+            timeout: 120
+            continue_on_failure: true
+
+  # Kubernetes/YAML workflow
+  - name: kubernetes_workflow
+    description: Workflow for Kubernetes manifests and YAML files
+    match:
+      file_patterns: ["*.yaml", "*.yml"]
+      labels: ["kubernetes", "k8s"]
+    
+    context_template: |
+      You are editing Kubernetes/YAML configuration.
+      
+      File: {file_path}
+      Current configuration:
+      {current_content}
+      
+      Requirements:
+      {issue_description}
+      
+      Guidelines:
+      - Ensure valid YAML syntax
+      - Follow Kubernetes best practices
+      - Include appropriate labels and annotations
+      - Consider security contexts
+      - Add resource limits where needed
+      
+      Apply the requested changes.
+    
+    pre_edit:
+      - name: yaml_lint
+        hooks:
+          - name: lint_yaml
+            command: "yamllint {file_path}"
+            timeout: 60
+            continue_on_failure: true
+    
+    post_edit:
+      - name: validate_yaml
+        hooks:
+          - name: check_syntax
+            command: "python -m yaml {file_path}"
+            timeout: 30
+    
+    validation:
+      - name: kubernetes_validate
+        hooks:
+          - name: dry_run
+            command: "kubectl apply --dry-run=client -f {file_path}"
+            timeout: 60
+            continue_on_failure: true
+          - name: security_scan
+            command: "kubesec scan {file_path}"
+            timeout: 120
+            continue_on_failure: true
+
+  # Docker workflow
+  - name: docker_workflow
+    description: Workflow for Dockerfile editing
+    match:
+      file_patterns: ["Dockerfile*", "*.dockerfile"]
+    
+    context_template: |
+      You are editing a Dockerfile.
+      
+      File: {file_path}
+      Current Dockerfile:
+      {current_content}
+      
+      Requirements:
+      {issue_description}
+      
+      Guidelines:
+      - Use specific base image versions
+      - Minimize layers
+      - Run as non-root user
+      - Use multi-stage builds where appropriate
+      - Include HEALTHCHECK
+      - Add labels for metadata
+      
+      Implement the requested changes.
+    
+    validation:
+      - name: docker_validate
+        hooks:
+          - name: hadolint
+            command: "hadolint {file_path}"
+            timeout: 60
+            continue_on_failure: true
+          - name: build_test
+            command: "docker build -t test-build:latest -f {file_path} ."
+            timeout: 600
+            continue_on_failure: true
