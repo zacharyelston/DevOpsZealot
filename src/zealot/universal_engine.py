@@ -19,7 +19,8 @@ from .adapters.base import (
     LLMAdapter,
     ContainerAdapter
 )
-from .task_queue import TaskQueue
+# TaskQueue is optional - only imported if redis_url is provided
+TaskQueue = None
 from .universal_config import UniversalConfig
 
 logger = structlog.get_logger()
@@ -71,8 +72,14 @@ class UniversalZealotEngine:
         self.workflow_matcher = WorkflowMatcher(self.workflows)
         self.plugin_manager = PluginManager()
         
-        # Task queue
-        self.task_queue = TaskQueue(config.redis_url) if config.redis_url else None
+        # Task queue - only available if Redis is configured
+        self.task_queue = None
+        if config.redis_url:
+            try:
+                from .task_queue import TaskQueue
+                self.task_queue = TaskQueue(config.redis_url)
+            except ImportError:
+                logger.warning("Redis not available, task queue disabled")
         
         self._running = False
         

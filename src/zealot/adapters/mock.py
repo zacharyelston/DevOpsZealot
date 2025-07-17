@@ -13,6 +13,21 @@ class MockIssueAdapter(IssueAdapter):
     
     async def get_issue(self, issue_id: str) -> Dict[str, Any]:
         """Return mock issue data"""
+        # Check if specific mock data is configured
+        mock_data = self.config.get('mock_data', {})
+        if issue_id in mock_data:
+            issue_data = mock_data[issue_id].copy()
+            issue_data['id'] = issue_id
+            # Add default fields if missing
+            issue_data.setdefault('status', 'open')
+            issue_data.setdefault('priority', 'normal')
+            issue_data.setdefault('labels', ['mock', 'test'])
+            issue_data.setdefault('assignee', 'test-user')
+            issue_data.setdefault('created_at', '2025-01-01T00:00:00Z')
+            issue_data.setdefault('updated_at', '2025-01-01T00:00:00Z')
+            return issue_data
+        
+        # Default mock data
         return {
             'id': issue_id,
             'title': f'Mock Issue {issue_id}',

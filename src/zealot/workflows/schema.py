@@ -30,11 +30,12 @@ class WorkflowMatch:
             if not re.match(self.repository_pattern, task.repository):
                 return False
         
-        # Check file patterns
+        # Check file patterns (using fnmatch for glob patterns like *.py)
         if self.file_patterns:
+            import fnmatch
             task_files = getattr(task, 'files', [])
             if not any(
-                any(re.match(pattern, file) for pattern in self.file_patterns)
+                any(fnmatch.fnmatch(file, pattern) for pattern in self.file_patterns)
                 for file in task_files
             ):
                 return False
@@ -101,23 +102,30 @@ class Workflow:
         match_data = data.get('match', {})
         match = WorkflowMatch(**match_data) if match_data else None
         
-        pre_edit = [
-            WorkflowStage.from_dict({'name': f'pre_{i}', 'hooks': [h]})
-            if isinstance(h, (str, dict)) else WorkflowStage.from_dict(h)
-            for i, h in enumerate(data.get('pre_edit', []))
-        ]
+        def parse_stage_list(stage_list):
+            """Parse a list of stage definitions"""
+            stages = []
+            for i, stage_data in enumerate(stage_list):
+                if isinstance(stage_data, str):
+                    # Simple command string
+                    stages.append(WorkflowStage.from_dict({
+                        'name': f'stage_{i}',
+                        'hooks': [{'name': stage_data, 'command': stage_data}]
+                    }))
+                elif isinstance(stage_data, dict) and 'name' in stage_data:
+                    # Full stage definition
+                    stages.append(WorkflowStage.from_dict(stage_data))
+                elif isinstance(stage_data, dict):
+                    # Hook definition that needs to be wrapped in a stage
+                    stages.append(WorkflowStage.from_dict({
+                        'name': f'stage_{i}',
+                        'hooks': [stage_data]
+                    }))
+            return stages
         
-        post_edit = [
-            WorkflowStage.from_dict({'name': f'post_{i}', 'hooks': [h]})
-            if isinstance(h, (str, dict)) else WorkflowStage.from_dict(h)
-            for i, h in enumerate(data.get('post_edit', []))
-        ]
-        
-        validation = [
-            WorkflowStage.from_dict({'name': f'val_{i}', 'hooks': [h]})
-            if isinstance(h, (str, dict)) else WorkflowStage.from_dict(h)
-            for i, h in enumerate(data.get('validation', []))
-        ]
+        pre_edit = parse_stage_list(data.get('pre_edit', []))
+        post_edit = parse_stage_list(data.get('post_edit', []))
+        validation = parse_stage_list(data.get('validation', []))
         
         return cls(
             name=data['name'],
